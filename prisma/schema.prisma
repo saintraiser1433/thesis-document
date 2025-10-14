@@ -1,0 +1,125 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      UserRole @default(STUDENT)
+  image     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  thesis Thesis[]
+
+  @@map("users")
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  thesis Thesis[]
+
+  @@map("categories")
+}
+
+model Course {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  code      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  thesis Thesis[]
+
+  @@map("courses")
+}
+
+model SchoolYear {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  thesis Thesis[]
+
+  @@map("school_years")
+}
+
+model Thesis {
+  id                String   @id @default(cuid())
+  title             String
+  abstract          String
+  fileUrl           String?
+  isPublishedOnline Boolean  @default(false)
+  publisherName     String?
+  publisherLink     String?
+  citation          String?
+  uploadedBy        String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId   String
+  category     Category   @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  courseId     String
+  course       Course     @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  schoolYearId String
+  schoolYear   SchoolYear @relation(fields: [schoolYearId], references: [id], onDelete: Restrict)
+  authors      ThesisAuthor[]
+  indexings    Indexing[]
+
+  @@map("theses")
+}
+
+model ThesisAuthor {
+  id      String @id @default(cuid())
+  name    String
+  thesisId String
+
+  // Relations
+  thesis Thesis @relation(fields: [thesisId], references: [id], onDelete: Cascade)
+
+  @@map("thesis_authors")
+}
+
+model Indexing {
+  id      String @id @default(cuid())
+  type    String
+  url     String
+  thesisId String
+
+  // Relations
+  thesis Thesis @relation(fields: [thesisId], references: [id], onDelete: Cascade)
+
+  @@map("indexings")
+}
+
+enum UserRole {
+  ADMIN
+  PROGRAM_HEAD
+  TEACHER
+  STUDENT
+}
