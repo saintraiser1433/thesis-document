@@ -23,9 +23,10 @@ export async function GET() {
           select: {
             id: true,
             name: true,
-            email: true
-          }
-        }
+            email: true,
+            role: true,
+          },
+        },
       },
       orderBy: {
         createdAt: 'desc'
@@ -42,6 +43,7 @@ export async function GET() {
       publisherLink: thesis.publisherLink,
       citation: thesis.citation,
       uploadedBy: thesis.uploadedBy,
+      routingStatus: thesis.routingStatus ?? "NONE",
       createdAt: thesis.createdAt.toISOString().split('T')[0],
       updatedAt: thesis.updatedAt.toISOString().split('T')[0],
       category: thesis.category.name,
@@ -68,7 +70,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session || !["ADMIN", "PROGRAM_HEAD"].includes(session.user?.role || "")) {
+    if (!session || !["ADMIN", "PROGRAM_HEAD", "STUDENT", "TEACHER"].includes(session.user?.role || "")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
@@ -112,12 +114,16 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Create thesis with related data
+    // Program Head and Admin theses go straight to archive; students/teachers go through routing.
+    const role = session.user?.role || ""
+    const autoArchive = role === "PROGRAM_HEAD" || role === "ADMIN"
+
     const thesis = await prisma.thesis.create({
       data: {
         title,
         abstract,
         fileUrl,
+        routingStatus: autoArchive ? "ARCHIVED" : "PENDING_REVIEW",
         isPublishedOnline: isPublishedOnline || false,
         publisherName: publisherName || null,
         publisherLink: publisherLink || null,

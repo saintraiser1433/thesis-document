@@ -67,6 +67,11 @@ interface Thesis {
   courseCode: string
   schoolYear: string
   isPublishedOnline: boolean
+  routingStatus?: string
+  user?: {
+    id: string
+    role?: string
+  }
   publisherName?: string
   publisherLink?: string
   citation?: string
@@ -101,6 +106,13 @@ export default function ProgramHeadThesesPage() {
   const [schoolYears, setSchoolYears] = useState<{ id: string; name: string }[]>([])
   const [viewDialogOpen, setViewDialogOpen] = useState(false)
   const [thesisToView, setThesisToView] = useState<Thesis | null>(null)
+
+  const PENDING_ROUTING_STATUSES = ["PENDING_REVIEW", "IN_ROUTING", "PENDING_ARCHIVE"] as const
+  const isPendingRouting = (status: string | undefined | null) =>
+    !!status && PENDING_ROUTING_STATUSES.includes(status as (typeof PENDING_ROUTING_STATUSES)[number])
+  const isArchived = (status: string | undefined | null, uploaderRole?: string) =>
+    status === "ARCHIVED" ||
+    (status === "NONE" && (uploaderRole === "ADMIN" || uploaderRole === "PROGRAM_HEAD"))
 
   useEffect(() => {
     fetchTheses()
@@ -210,17 +222,30 @@ export default function ProgramHeadThesesPage() {
 
 
   const filteredTheses = theses.filter(thesis => {
+    const pending = isPendingRouting(thesis.routingStatus)
+    const archived = isArchived(thesis.routingStatus, thesis.user?.role)
+
     const matchesCategory = selectedCategory === "all" || thesis.category === selectedCategory
     const matchesYear = selectedYear === "all" || thesis.schoolYear === selectedYear
-    const matchesTab = activeTab === "all" || 
-      (activeTab === "published" && thesis.isPublishedOnline) ||
-      (activeTab === "unpublished" && !thesis.isPublishedOnline)
-    
+
+    let matchesTab = false
+    if (activeTab === "pending") {
+      matchesTab = pending
+    } else {
+      if (!archived) return false
+      matchesTab =
+        activeTab === "all" ||
+        (activeTab === "published" && thesis.isPublishedOnline) ||
+        (activeTab === "unpublished" && !thesis.isPublishedOnline)
+    }
+
     return matchesCategory && matchesYear && matchesTab
   })
 
-  const publishedCount = theses.filter(t => t.isPublishedOnline).length
-  const unpublishedCount = theses.filter(t => !t.isPublishedOnline).length
+  const totalArchivedCount = theses.filter(t => isArchived(t.routingStatus, t.user?.role)).length
+  const publishedCount = theses.filter(t => isArchived(t.routingStatus, t.user?.role) && t.isPublishedOnline).length
+  const unpublishedCount = theses.filter(t => isArchived(t.routingStatus, t.user?.role) && !t.isPublishedOnline).length
+  const pendingCount = theses.filter(t => isPendingRouting(t.routingStatus)).length
 
   const handleDownload = (thesisId: string) => {
     const thesis = theses.find(t => t.id === thesisId)
@@ -540,9 +565,10 @@ export default function ProgramHeadThesesPage() {
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList>
-            <TabsTrigger value="all">All Thesis ({theses.length})</TabsTrigger>
+            <TabsTrigger value="all">All Thesis ({totalArchivedCount})</TabsTrigger>
             <TabsTrigger value="published">Published ({publishedCount})</TabsTrigger>
             <TabsTrigger value="unpublished">Unpublished ({unpublishedCount})</TabsTrigger>
+            <TabsTrigger value="pending">Pending routing ({pendingCount})</TabsTrigger>
           </TabsList>
 
           <TabsContent value={activeTab} className="space-y-4">

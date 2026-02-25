@@ -104,7 +104,7 @@ export default function Page() {
       case "PROGRAM_HEAD":
         return [
           { 
-            title: "My Theses", 
+            title: "My Thesis", 
             value: (dashboardData.myTheses || 0).toString(), 
             icon: FileText, 
             change: { ...(dashboardData.myThesesChange || { value: 0, type: "increase" }), period: "from last month" } 
@@ -237,7 +237,7 @@ export default function Page() {
                 Category Distribution
               </CardTitle>
               <CardDescription>
-                Theses distribution across different categories
+                Thesis distribution across different categories
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -293,7 +293,7 @@ export default function Page() {
                 Publication Trends
               </CardTitle>
               <CardDescription>
-                Published theses by year
+                Published thesis by year
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -371,7 +371,7 @@ export default function Page() {
                     <a href="/admin/thesis" className="block w-full text-left p-2 rounded hover:bg-muted transition-colors">
                       <div className="flex items-center">
                         <FileText className="h-4 w-4 mr-2" />
-                        View All Theses ({dashboardData?.totalTheses || 0})
+                        View All Thesis ({dashboardData?.totalTheses || 0})
                       </div>
                     </a>
                     <a href="/admin/categories" className="block w-full text-left p-2 rounded hover:bg-muted transition-colors">
@@ -399,7 +399,7 @@ export default function Page() {
                     <a href="/program-head/thesis" className="block w-full text-left p-2 rounded hover:bg-muted transition-colors">
                       <div className="flex items-center">
                         <FileText className="h-4 w-4 mr-2" />
-                        Manage My Theses ({dashboardData?.myTheses || 0})
+                        Manage My Thesis ({dashboardData?.myTheses || 0})
                       </div>
                     </a>
                     <a href="/program-head/thesis" className="block w-full text-left p-2 rounded hover:bg-muted transition-colors">
@@ -421,7 +421,7 @@ export default function Page() {
                     <a href="/thesis/browse" className="block w-full text-left p-2 rounded hover:bg-muted transition-colors">
                       <div className="flex items-center">
                         <FileText className="h-4 w-4 mr-2" />
-                        Browse Theses ({dashboardData?.totalTheses || 0})
+                        Browse Thesis ({dashboardData?.totalTheses || 0})
                       </div>
                     </a>
                     <a href="/thesis/browse" className="block w-full text-left p-2 rounded hover:bg-muted transition-colors">
@@ -439,7 +439,7 @@ export default function Page() {
                     <a href="/thesis/browse" className="block w-full text-left p-2 rounded hover:bg-muted transition-colors">
                       <div className="flex items-center">
                         <Download className="h-4 w-4 mr-2" />
-                        Download Theses
+                        Download Thesis
                       </div>
                     </a>
                   </>

@@ -24,7 +24,10 @@ model User {
   updatedAt DateTime @updatedAt
 
   // Relations
-  thesis Thesis[]
+  thesis                Thesis[]
+  routingSchedulesAsAdmin RoutingSchedule[]
+  peerReviewAssignments  PeerReviewAssignment[]
+  notifications          Notification[]
 
   @@map("users")
 }
@@ -76,20 +79,22 @@ model Thesis {
   publisherLink     String?
   citation          String?
   uploadedBy        String
+  routingStatus     RoutingStatus @default(NONE)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
   // Relations
-  userId       String
-  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  categoryId   String
-  category     Category   @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  courseId     String
-  course       Course     @relation(fields: [courseId], references: [id], onDelete: Restrict)
-  schoolYearId String
-  schoolYear   SchoolYear @relation(fields: [schoolYearId], references: [id], onDelete: Restrict)
-  authors      ThesisAuthor[]
-  indexings    Indexing[]
+  userId           String
+  user             User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId       String
+  category         Category   @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  courseId         String
+  course           Course     @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  schoolYearId     String
+  schoolYear       SchoolYear @relation(fields: [schoolYearId], references: [id], onDelete: Restrict)
+  authors          ThesisAuthor[]
+  indexings        Indexing[]
+  routingSchedule  RoutingSchedule?
 
   @@map("theses")
 }
@@ -122,4 +127,94 @@ enum UserRole {
   PROGRAM_HEAD
   TEACHER
   STUDENT
+  PEER_REVIEWER
+}
+
+enum RoutingStatus {
+  NONE
+  PENDING_REVIEW
+  IN_ROUTING
+  PENDING_ARCHIVE
+  ARCHIVED
+}
+
+enum RoutingScheduleStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum RoundStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum AssignmentStatus {
+  PENDING
+  IN_PROGRESS
+  APPROVED
+  REJECTED
+  SKIPPED
+}
+
+model RoutingSchedule {
+  id        String   @id @default(cuid())
+  thesisId  String   @unique
+  thesis    Thesis   @relation(fields: [thesisId], references: [id], onDelete: Cascade)
+  adminId   String
+  admin     User     @relation(fields: [adminId], references: [id], onDelete: Restrict)
+  startDate DateTime
+  status    RoutingScheduleStatus @default(ACTIVE)
+  rounds    RoutingRound[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("routing_schedules")
+}
+
+model RoutingRound {
+  id            String     @id @default(cuid())
+  scheduleId    String
+  schedule      RoutingSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  roundNumber   Int
+  status        RoundStatus @default(PENDING)
+  thesisFileUrl String?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  assignments   PeerReviewAssignment[]
+
+  @@map("routing_rounds")
+}
+
+model PeerReviewAssignment {
+  id         String   @id @default(cuid())
+  roundId    String
+  round      RoutingRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  reviewerId String
+  reviewer   User     @relation(fields: [reviewerId], references: [id], onDelete: Restrict)
+  order      Int
+  deadline   DateTime
+  status     AssignmentStatus @default(PENDING)
+  comment    String?
+  approved   Boolean?
+  reviewedAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("peer_review_assignments")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  thesisId  String?
+  createdAt DateTime @default(now())
+
+  @@map("notifications")
 }

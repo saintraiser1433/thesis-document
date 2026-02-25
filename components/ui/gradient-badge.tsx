@@ -1,8 +1,8 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
 
-interface GradientBadgeProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: "published" | "unpublished" | "admin" | "program_head" | "teacher" | "student" | "default"
+interface GradientBadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
+  variant?: "published" | "unpublished" | "admin" | "program_head" | "teacher" | "student" | "peer_reviewer" | "default"
   children: React.ReactNode
 }
 
@@ -13,6 +13,7 @@ const gradientVariants = {
   program_head: "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/25",
   teacher: "bg-gradient-to-r from-purple-500 to-violet-600 text-white shadow-lg shadow-purple-500/25",
   student: "bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-500/25",
+  peer_reviewer: "bg-gradient-to-r from-teal-500 to-cyan-600 text-white shadow-lg shadow-teal-500/25",
   default: "bg-gradient-to-r from-gray-500 to-slate-600 text-white shadow-lg shadow-gray-500/25",
 }
 
@@ -23,7 +24,7 @@ export function GradientBadge({
   ...props 
 }: GradientBadgeProps) {
   return (
-    <div
+    <span
       className={cn(
         "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold transition-all duration-200 hover:scale-105",
         gradientVariants[variant],
@@ -32,6 +33,6 @@ export function GradientBadge({
       {...props}
     >
       {children}
-    </div>
+    </span>
   )
 }

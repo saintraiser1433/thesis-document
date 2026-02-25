@@ -52,6 +52,11 @@ interface Thesis {
   courseCode: string
   schoolYear: string
   isPublishedOnline: boolean
+  routingStatus?: string
+  user?: {
+    id: string
+    role?: string
+  }
   publisherName?: string
   publisherLink?: string
   citation?: string
@@ -152,18 +157,38 @@ export default function BrowseThesesPage() {
   const categories = ["Computer Science", "Information Technology", "Software Engineering", "Data Science", "Cybersecurity"]
   const schoolYears = ["2022-2023", "2023-2024", "2024-2025"]
 
+  const PENDING_ROUTING_STATUSES = ["PENDING_REVIEW", "IN_ROUTING", "PENDING_ARCHIVE"] as const
+  const isPendingRouting = (status: string | undefined | null) =>
+    !!status && PENDING_ROUTING_STATUSES.includes(status as (typeof PENDING_ROUTING_STATUSES)[number])
+  const isArchived = (status: string | undefined | null, uploaderRole?: string) =>
+    status === "ARCHIVED" ||
+    (status === "NONE" && (uploaderRole === "ADMIN" || uploaderRole === "PROGRAM_HEAD"))
+
   const filteredTheses = theses.filter(thesis => {
+    const pending = isPendingRouting(thesis.routingStatus)
+    const archived = isArchived(thesis.routingStatus, thesis.user?.role)
     const matchesCategory = selectedCategory === "all" || thesis.category === selectedCategory
     const matchesYear = selectedYear === "all" || thesis.schoolYear === selectedYear
-    const matchesTab = activeTab === "all" || 
-      (activeTab === "published" && thesis.isPublishedOnline) ||
-      (activeTab === "unpublished" && !thesis.isPublishedOnline)
-    
+
+    let matchesTab = false
+    if (activeTab === "all") {
+      // Archive list: only theses that have completed routing and are archived
+      matchesTab = archived
+    } else if (activeTab === "published") {
+      matchesTab = archived && thesis.isPublishedOnline
+    } else if (activeTab === "unpublished") {
+      matchesTab = archived && !thesis.isPublishedOnline
+    } else if (activeTab === "pending") {
+      matchesTab = pending
+    }
+
     return matchesCategory && matchesYear && matchesTab
   })
 
-  const publishedCount = theses.filter(t => t.isPublishedOnline).length
-  const unpublishedCount = theses.filter(t => !t.isPublishedOnline).length
+  const totalArchivedCount = theses.filter(t => isArchived(t.routingStatus, t.user?.role)).length
+  const publishedCount = theses.filter(t => isArchived(t.routingStatus, t.user?.role) && t.isPublishedOnline).length
+  const unpublishedCount = theses.filter(t => isArchived(t.routingStatus, t.user?.role) && !t.isPublishedOnline).length
+  const pendingCount = theses.filter(t => isPendingRouting(t.routingStatus)).length
 
   const handleDownload = (thesisId: string) => {
     const thesis = theses.find(t => t.id === thesisId)
@@ -350,37 +375,40 @@ export default function BrowseThesesPage() {
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList>
-            <TabsTrigger value="all">All Thesis ({theses.length})</TabsTrigger>
+            <TabsTrigger value="all">All Thesis ({totalArchivedCount})</TabsTrigger>
             <TabsTrigger value="published">Published ({publishedCount})</TabsTrigger>
             <TabsTrigger value="unpublished">Unpublished ({unpublishedCount})</TabsTrigger>
+            <TabsTrigger value="pending">Pending routing ({pendingCount})</TabsTrigger>
           </TabsList>
 
-          <TabsContent value={activeTab} className="space-y-4">
-            {viewMode === "grouped" ? (
-              <ThesisGroupedView 
-                theses={filteredTheses}
-                onView={handleView}
-                onDownload={handleDownload}
-              />
-            ) : (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Thesis Archive</CardTitle>
-                  <CardDescription>
-                    {filteredTheses.length} {filteredTheses.length === 1 ? 'thesis' : 'thesis'} found
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <DataTable 
-                    columns={columns} 
-                    data={filteredTheses}
-                    searchKey="title"
-                    searchPlaceholder="Search thesis, authors, or abstracts..."
-                  />
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
+          {(["all", "published", "unpublished", "pending"] as const).map((tab) => (
+            <TabsContent key={tab} value={tab} className="space-y-4">
+              {viewMode === "grouped" ? (
+                <ThesisGroupedView
+                  theses={filteredTheses}
+                  onView={handleView}
+                  onDownload={handleDownload}
+                />
+              ) : (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Thesis Archive</CardTitle>
+                    <CardDescription>
+                      {filteredTheses.length} {filteredTheses.length === 1 ? "thesis" : "thesis"} found
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <DataTable
+                      columns={columns}
+                      data={filteredTheses}
+                      searchKey="title"
+                      searchPlaceholder="Search thesis, authors, or abstracts..."
+                    />
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+          ))}
         </Tabs>
       </div>
 

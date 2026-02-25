@@ -22,9 +22,11 @@ export default withAuth(
         const role = token?.role
         if (['STUDENT', 'TEACHER'].includes(role as string)) {
           return NextResponse.redirect(new URL('/thesis/browse', req.url))
-        } else {
-          return NextResponse.redirect(new URL('/dashboard', req.url))
         }
+        if (role === 'PEER_REVIEWER') {
+          return NextResponse.redirect(new URL('/peer-reviewer/dashboard', req.url))
+        }
+        return NextResponse.redirect(new URL('/dashboard', req.url))
       } else {
         return NextResponse.redirect(new URL('/auth', req.url))
       }
@@ -39,9 +41,22 @@ export default withAuth(
     const role = token?.role
     const pathname = req.nextUrl.pathname
 
-    // Dashboard access - only for ADMIN and PROGRAM_HEAD
+    // Dashboard access - ADMIN and PROGRAM_HEAD (PEER_REVIEWER has own dashboard)
     if (pathname.startsWith('/dashboard') && !['ADMIN', 'PROGRAM_HEAD'].includes(role as string)) {
+      if (role === 'PEER_REVIEWER') {
+        return NextResponse.redirect(new URL('/peer-reviewer/dashboard', req.url))
+      }
       return NextResponse.redirect(new URL('/thesis/browse', req.url))
+    }
+
+    // Peer reviewer routes
+    if (pathname.startsWith('/peer-reviewer') && !['PEER_REVIEWER', 'ADMIN'].includes(role as string)) {
+      return NextResponse.redirect(new URL('/thesis/browse', req.url))
+    }
+
+    // Notifications - all authenticated roles
+    if (pathname.startsWith('/notifications')) {
+      return null
     }
 
     // Admin routes
@@ -62,8 +77,11 @@ export default withAuth(
       }
     }
 
-    // Student/Teacher routes
-    if (pathname.startsWith('/thesis') && !['STUDENT', 'TEACHER'].includes(role as string)) {
+    // Student/Teacher routes (browse, search, routing)
+    if (pathname.startsWith('/thesis') && !['STUDENT', 'TEACHER', 'ADMIN'].includes(role as string)) {
+      if (role === 'PEER_REVIEWER') {
+        return NextResponse.redirect(new URL('/peer-reviewer/dashboard', req.url))
+      }
       return NextResponse.redirect(new URL('/dashboard', req.url))
     }
   },
@@ -90,7 +108,9 @@ export const config = {
     '/dashboard/:path*',
     '/admin/:path*',
     '/program-head/:path*',
+    '/peer-reviewer/:path*',
     '/thesis/:path*',
+    '/notifications/:path*',
     '/auth/:path*'
   ]
 }

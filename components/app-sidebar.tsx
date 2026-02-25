@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useEffect, useState } from "react"
 import { useSession, signOut } from "next-auth/react"
 import { usePathname, useRouter } from "next/navigation"
 import Link from "next/link"
@@ -14,7 +15,10 @@ import {
   FileText,
   BarChart3,
   Upload,
-  Calendar
+  Calendar,
+  ClipboardList,
+  UserCheck,
+  Archive
 } from "lucide-react"
 import {
   Sidebar,
@@ -29,21 +33,25 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar"
-import { Button } from "@/components/ui/button"
-import { ThemeToggle } from "@/components/theme-toggle"
 import { TeamSwitcher } from "@/components/team-switcher"
 import { NavUser } from "@/components/nav-user"
 
 const getNavigationItems = (role: string) => {
   const baseItems = []
   
-  // Only show Dashboard for ADMIN and PROGRAM_HEAD
+  // Dashboard for ADMIN and PROGRAM_HEAD; PEER_REVIEWER has own dashboard
   if (['ADMIN', 'PROGRAM_HEAD'].includes(role)) {
     baseItems.push({
       title: "Dashboard",
       url: "/dashboard",
       icon: BarChart3,
     })
+  }
+  if (role === 'PEER_REVIEWER') {
+    baseItems.push(
+      { title: "Dashboard", url: "/peer-reviewer/dashboard", icon: BarChart3 },
+      { title: "Assignments", url: "/peer-reviewer/assignments", icon: ClipboardList }
+    )
   }
 
   const roleSpecificItems = {
@@ -53,53 +61,94 @@ const getNavigationItems = (role: string) => {
         url: "/admin/users",
         icon: Users,
       },
-        {
-          title: "Categories",
-          url: "/admin/categories",
-          icon: FolderOpen,
-        },
-        {
-          title: "Courses",
-          url: "/admin/courses",
-          icon: BookOpen,
-        },
-        {
-          title: "School Years",
-          url: "/admin/school-years",
-          icon: Calendar,
-        },
-          {
-            title: "All Thesis",
-            url: "/admin/thesis",
-            icon: FileText,
-          },
+      {
+        title: "Categories",
+        url: "/admin/categories",
+        icon: FolderOpen,
+      },
+      {
+        title: "Courses",
+        url: "/admin/courses",
+        icon: BookOpen,
+      },
+      {
+        title: "School Years",
+        url: "/admin/school-years",
+        icon: Calendar,
+      },
+      {
+        title: "All Thesis",
+        url: "/admin/thesis",
+        icon: FileText,
+      },
+      {
+        title: "Routing Schedules",
+        url: "/admin/routing",
+        icon: ClipboardList,
+      },
+      {
+        title: "Peer Reviewers",
+        url: "/admin/peer-reviewers",
+        icon: UserCheck,
+      },
     ],
     PROGRAM_HEAD: [
       {
-        title: "Upload Thesis",
+        title: "Add thesis",
         url: "/program-head/upload",
         icon: Upload,
       },
       {
-        title: "My Thesis",
-        url: "/program-head/thesis",
+        title: "Browse Thesis",
+        url: "/thesis/browse",
+        icon: BookOpen,
+      },
+      {
+        title: "Presented Thesis",
+        url: "/program-head/presented-theses",
         icon: FileText,
+      },
+      {
+        title: "Archive Approvals",
+        url: "/program-head/archive-approvals",
+        icon: Archive,
       },
     ],
     STUDENT: [
       {
-        title: "Browse Thesis",
-        url: "/thesis/browse",
-        icon: BookOpen,
+        title: "Upload Thesis",
+        url: "/thesis/upload",
+        icon: Upload,
       },
-    ],
-    TEACHER: [
       {
         title: "Browse Thesis",
         url: "/thesis/browse",
         icon: BookOpen,
       },
+      {
+        title: "Thesis Routing",
+        url: "/thesis/routing",
+        icon: ClipboardList,
+      },
     ],
+    TEACHER: [
+      {
+        title: "Upload Thesis",
+        url: "/thesis/upload",
+        icon: Upload,
+      },
+      {
+        title: "Browse Thesis",
+        url: "/thesis/browse",
+        icon: BookOpen,
+      },
+      {
+        title: "Thesis Routing",
+        url: "/thesis/routing",
+        icon: ClipboardList,
+      },
+    ],
+    PEER_REVIEWER: [],
   }
 
   return [...baseItems, ...(roleSpecificItems[role as keyof typeof roleSpecificItems] || [])]
@@ -124,13 +173,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar {...props}>
       <SidebarHeader>
-        <div className="flex items-center justify-between px-2">
+        <div className="px-2">
           <TeamSwitcher
             teams={[
               { name: "Thesis Archive", logo: BookOpen, plan: role },
             ]}
           />
-          <ThemeToggle />
         </div>
       </SidebarHeader>
       <SidebarContent>

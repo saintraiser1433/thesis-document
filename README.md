@@ -107,6 +107,8 @@ After seeding the database, you can use these accounts:
 - **Program Head**: `programhead@example.com` / `password123`
 - **Teacher**: `teacher@example.com` / `password123`
 - **Student**: `student@example.com` / `password123`
+- **Peer Reviewer 1**: `reviewer1@example.com` / `password123`
+- **Peer Reviewer 2**: `reviewer2@example.com` / `password123`
 
 ## Project Structure
 

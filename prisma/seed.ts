@@ -116,6 +116,28 @@ async function main() {
     },
   })
 
+  const peerReviewer1 = await prisma.user.upsert({
+    where: { email: 'reviewer1@example.com' },
+    update: {},
+    create: {
+      name: 'Dr. Peer Reviewer One',
+      email: 'reviewer1@example.com',
+      password: hashedPassword,
+      role: 'PEER_REVIEWER',
+    },
+  })
+
+  const peerReviewer2 = await prisma.user.upsert({
+    where: { email: 'reviewer2@example.com' },
+    update: {},
+    create: {
+      name: 'Dr. Peer Reviewer Two',
+      email: 'reviewer2@example.com',
+      password: hashedPassword,
+      role: 'PEER_REVIEWER',
+    },
+  })
+
   // Create sample thesis
   const thesis1 = await prisma.thesis.create({
     data: {
@@ -308,6 +330,8 @@ async function main() {
   console.log('- Program Head: programhead@example.com (password: password123)')
   console.log('- Teacher: teacher@example.com (password: password123)')
   console.log('- Student: student@example.com (password: password123)')
+  console.log('- Peer Reviewer 1: reviewer1@example.com (password: password123)')
+  console.log('- Peer Reviewer 2: reviewer2@example.com (password: password123)')
   console.log('Created categories:', categories.map(c => c.name))
   console.log('Created courses:', courses.map(c => c.name))
   console.log('Created school years:', schoolYears.map(sy => sy.name))

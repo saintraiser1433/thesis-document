@@ -189,6 +189,8 @@ export default function AdminUsersPage() {
         return "teacher"
       case "STUDENT":
         return "student"
+      case "PEER_REVIEWER":
+        return "peer_reviewer"
       default:
         return "default"
     }
@@ -596,6 +598,7 @@ function UserForm({ user, onSubmit, onCancel }: {
             <SelectItem value="PROGRAM_HEAD">Program Head</SelectItem>
             <SelectItem value="TEACHER">Teacher</SelectItem>
             <SelectItem value="STUDENT">Student</SelectItem>
+            <SelectItem value="PEER_REVIEWER">Peer Reviewer</SelectItem>
           </SelectContent>
         </Select>
       </div>
