@@ -77,8 +77,8 @@ export default withAuth(
       }
     }
 
-    // Student/Teacher routes (browse, search, routing)
-    if (pathname.startsWith('/thesis') && !['STUDENT', 'TEACHER', 'ADMIN'].includes(role as string)) {
+    // Thesis routes (browse, search, routing) - accessible to Student, Teacher, Program Head, Admin
+    if (pathname.startsWith('/thesis') && !['STUDENT', 'TEACHER', 'PROGRAM_HEAD', 'ADMIN'].includes(role as string)) {
       if (role === 'PEER_REVIEWER') {
         return NextResponse.redirect(new URL('/peer-reviewer/dashboard', req.url))
       }

@@ -141,7 +141,7 @@ export function ThesisGroupedView({ theses, onView, onDownload, onEdit, onDelete
             <FileText className="h-10 w-10 text-muted-foreground mb-3" />
             <CardTitle className="text-lg">No thesis found</CardTitle>
             <CardDescription className="max-w-md">
-              Try adjusting your filters or search query to find a thesis.
+              Try adjusting your filters or search query to find a thesis. If you are a Program Head, this list only shows theses within your assigned department.
             </CardDescription>
           </CardContent>
         </Card>

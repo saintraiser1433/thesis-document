@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { ColumnDef } from "@tanstack/react-table"
 import { toast } from "react-toastify"
@@ -82,6 +83,7 @@ interface Thesis {
 
 export default function ProgramHeadThesesPage() {
   const router = useRouter()
+  const { data: session } = useSession()
   const [theses, setTheses] = useState<Thesis[]>([])
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [selectedYear, setSelectedYear] = useState("all")
@@ -115,9 +117,11 @@ export default function ProgramHeadThesesPage() {
     (status === "NONE" && (uploaderRole === "ADMIN" || uploaderRole === "PROGRAM_HEAD"))
 
   useEffect(() => {
-    fetchTheses()
-    loadFormData()
-  }, [])
+    if (session) {
+      fetchTheses()
+      loadFormData()
+    }
+  }, [session])
 
   const loadFormData = async () => {
     try {
@@ -151,7 +155,19 @@ export default function ProgramHeadThesesPage() {
       const response = await fetch('/api/theses')
       if (response.ok) {
         const data = await response.json()
-        setTheses(data)
+        const role = session?.user?.role
+        const departmentId = (session?.user as any)?.departmentId as string | undefined | null
+
+        const scoped =
+          role === "PROGRAM_HEAD" && departmentId
+            ? (data as any[]).filter(
+                (t) =>
+                  t.departmentId === departmentId ||
+                  t.user?.departmentId === departmentId
+              )
+            : data
+
+        setTheses(scoped)
       } else {
         toast.error("Failed to fetch theses")
       }

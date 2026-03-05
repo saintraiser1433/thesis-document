@@ -22,6 +22,8 @@ interface Thesis {
   id: string
   title: string
   routingStatus: string
+  departmentId?: string | null
+  departmentName?: string | null
   user?: { name: string }
 }
 
@@ -35,6 +37,8 @@ interface User {
 export default function AdminRoutingCreatePage() {
   const router = useRouter()
   const [theses, setTheses] = useState<Thesis[]>([])
+  const [departments, setDepartments] = useState<{ id: string; name: string }[]>([])
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState("")
   const [reviewers, setReviewers] = useState<User[]>([])
   const [thesisId, setThesisId] = useState("")
   const [reviewer1Id, setReviewer1Id] = useState("")
@@ -43,24 +47,43 @@ export default function AdminRoutingCreatePage() {
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    Promise.all([fetch("/api/theses"), fetch("/api/users")]).then(
-      async ([tRes, uRes]) => {
+    Promise.all([fetch("/api/theses"), fetch("/api/users"), fetch("/api/departments")]).then(
+      async ([tRes, uRes, dRes]) => {
         if (tRes.ok) {
           const tData = await tRes.json()
-          setTheses(tData.filter((t: Thesis) => t.routingStatus === "PENDING_REVIEW"))
+          setTheses(
+            tData
+              .filter((t: Thesis) => t.routingStatus === "PENDING_REVIEW")
+              .map((t: any) => ({
+                id: t.id,
+                title: t.title,
+                routingStatus: t.routingStatus,
+                departmentId: t.departmentId ?? t.user?.departmentId ?? null,
+                departmentName: t.departmentName ?? t.user?.department?.name ?? null,
+                user: t.user,
+              }))
+          )
         }
         if (uRes.ok) {
           const uData = await uRes.json()
           setReviewers(uData.filter((u: User) => u.role === "PEER_REVIEWER"))
         }
+        if (dRes.ok) {
+          const dData = await dRes.json()
+          setDepartments(dData)
+        }
       }
     )
   }, [])
 
+  const filteredTheses = selectedDepartmentId
+    ? theses.filter((t) => t.departmentId === selectedDepartmentId)
+    : theses
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!thesisId || !reviewer1Id || !reviewer2Id || !startDate) {
-      toast.error("Please fill all fields")
+    if (!selectedDepartmentId || !thesisId || !reviewer1Id || !reviewer2Id || !startDate) {
+      toast.error("Please select department, thesis, reviewers and start date")
       return
     }
     if (reviewer1Id === reviewer2Id) {
@@ -123,25 +146,49 @@ export default function AdminRoutingCreatePage() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="thesis">Thesis (Pending Review)</Label>
-                <Select value={thesisId} onValueChange={setThesisId} required>
-                  <SelectTrigger id="thesis">
-                    <SelectValue placeholder="Select thesis" />
+                <Label htmlFor="department">Department</Label>
+                <Select
+                  value={selectedDepartmentId}
+                  onValueChange={(value) => {
+                    setSelectedDepartmentId(value)
+                    setThesisId("")
+                  }}
+                  required
+                >
+                  <SelectTrigger id="department">
+                    <SelectValue placeholder="Select department" />
                   </SelectTrigger>
                   <SelectContent>
-                    {theses.map((t) => (
-                      <SelectItem key={t.id} value={t.id}>
-                        {t.title}
+                    {departments.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name}
                       </SelectItem>
                     ))}
-                    {theses.length === 0 && (
-                      <SelectItem value="none" disabled>
-                        No thesis pending review
-                      </SelectItem>
-                    )}
                   </SelectContent>
                 </Select>
               </div>
+              {selectedDepartmentId && (
+                <div className="space-y-2">
+                  <Label htmlFor="thesis">Thesis (Pending Review)</Label>
+                  <Select value={thesisId} onValueChange={setThesisId} required>
+                    <SelectTrigger id="thesis">
+                      <SelectValue placeholder="Select thesis" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredTheses.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.title}
+                        </SelectItem>
+                      ))}
+                      {filteredTheses.length === 0 && (
+                        <SelectItem value="none" disabled>
+                          No thesis pending review for this department
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="reviewer1">Peer Reviewer 1</Label>
                 <Select value={reviewer1Id} onValueChange={setReviewer1Id} required>

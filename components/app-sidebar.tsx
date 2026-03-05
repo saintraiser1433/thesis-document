@@ -62,6 +62,11 @@ const getNavigationItems = (role: string) => {
         icon: Users,
       },
       {
+        title: "Departments",
+        url: "/admin/departments",
+        icon: Settings,
+      },
+      {
         title: "Categories",
         url: "/admin/categories",
         icon: FolderOpen,

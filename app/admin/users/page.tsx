@@ -55,6 +55,8 @@ interface User {
   createdAt: string
   thesisCount: number
   image?: string
+  departmentId?: string | null
+  departmentName?: string | null
 }
 
 export default function AdminUsersPage() {
@@ -92,6 +94,9 @@ export default function AdminUsersPage() {
       body.append('password', formData.password || 'password123')
       body.append('role', formData.role)
       if (formData.imageFile) body.append('image', formData.imageFile)
+      if (formData.departmentId) {
+        body.append('departmentId', formData.departmentId)
+      }
 
       const response = await fetch('/api/users', {
         method: 'POST',
@@ -99,8 +104,8 @@ export default function AdminUsersPage() {
       })
 
       if (response.ok) {
-        const newUser = await response.json()
-        setUsers(prev => [newUser, ...prev])
+        // Re-fetch to keep department + counts in sync
+        await fetchUsers()
         setIsDialogOpen(false)
         toast.success("User created successfully!")
       } else {
@@ -127,6 +132,11 @@ export default function AdminUsersPage() {
       body.append('name', formData.name)
       body.append('email', formData.email)
       body.append('role', formData.role)
+      if (formData.departmentId) {
+        body.append('departmentId', formData.departmentId)
+      } else {
+        body.append('departmentId', "")
+      }
       if (formData.password) body.append('password', formData.password)
       if (formData.imageFile) body.append('image', formData.imageFile)
 
@@ -136,10 +146,8 @@ export default function AdminUsersPage() {
       })
 
       if (response.ok) {
-        const updatedUser = await response.json()
-        setUsers(users.map(user =>
-          user.id === editingUser.id ? updatedUser : user
-        ))
+        // Re-fetch so department and other derived fields stay accurate
+        await fetchUsers()
         setEditingUser(null)
         setIsDialogOpen(false)
         toast.success("User updated successfully!")
@@ -204,6 +212,30 @@ export default function AdminUsersPage() {
         <div className="font-medium">
           {row.index + 1}
         </div>
+      ),
+    },
+    {
+      accessorKey: "departmentName",
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="h-auto p-0 font-semibold"
+        >
+          Department
+          {column.getIsSorted() === "asc" ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === "desc" ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }) => (
+        <span className="text-sm text-muted-foreground">
+          {row.original.departmentName || "—"}
+        </span>
       ),
     },
     {
@@ -463,15 +495,24 @@ function UserForm({ user, onSubmit, onCancel }: {
   onSubmit: (data: any) => void, 
   onCancel: () => void 
 }) {
+  const [departments, setDepartments] = useState<{ id: string; name: string }[]>([])
   const [formData, setFormData] = useState({
     name: user?.name || "",
     email: user?.email || "",
     password: "",
     role: user?.role || "STUDENT",
     image: user?.image || "",
-    imageFile: undefined as File | undefined
+    imageFile: undefined as File | undefined,
+    departmentId: user?.departmentId || ""
   })
   const [imagePreview, setImagePreview] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch("/api/departments")
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => setDepartments(data))
+      .catch(() => setDepartments([]))
+  }, [])
 
   useEffect(() => {
     if (user) {
@@ -481,7 +522,8 @@ function UserForm({ user, onSubmit, onCancel }: {
         password: "",
         role: user.role,
         image: user.image || "",
-        imageFile: undefined
+        imageFile: undefined,
+        departmentId: user.departmentId || ""
       })
       setImagePreview(user.image || null)
     } else {
@@ -491,7 +533,8 @@ function UserForm({ user, onSubmit, onCancel }: {
         password: "",
         role: "STUDENT",
         image: "",
-        imageFile: undefined
+        imageFile: undefined,
+        departmentId: ""
       })
       setImagePreview(null)
     }
@@ -589,7 +632,20 @@ function UserForm({ user, onSubmit, onCancel }: {
       )}
       <div className="grid gap-2">
         <Label htmlFor="role">Role</Label>
-        <Select value={formData.role} onValueChange={(value) => setFormData(prev => ({ ...prev, role: value }))}>
+        <Select
+          value={formData.role}
+          onValueChange={(value) =>
+            setFormData((prev) => ({
+              ...prev,
+              role: value,
+              // Only keep department for roles that use it
+              departmentId:
+                value === "PROGRAM_HEAD" || value === "TEACHER" || value === "STUDENT"
+                  ? prev.departmentId
+                  : "",
+            }))
+          }
+        >
           <SelectTrigger id="role">
             <SelectValue placeholder="Select a role" />
           </SelectTrigger>
@@ -602,6 +658,30 @@ function UserForm({ user, onSubmit, onCancel }: {
           </SelectContent>
         </Select>
       </div>
+      {(formData.role === "PROGRAM_HEAD" ||
+        formData.role === "TEACHER" ||
+        formData.role === "STUDENT") && (
+        <div className="grid gap-2">
+          <Label htmlFor="department">
+            Department {formData.role === "PROGRAM_HEAD" ? "(required)" : "(optional)"}
+          </Label>
+          <Select
+            value={formData.departmentId}
+            onValueChange={(value) => setFormData((prev) => ({ ...prev, departmentId: value }))}
+          >
+            <SelectTrigger id="department">
+              <SelectValue placeholder="Select department" />
+            </SelectTrigger>
+            <SelectContent>
+              {departments.map((d) => (
+                <SelectItem key={d.id} value={d.id}>
+                  {d.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
       <div className="flex gap-2">
         <Button type="submit">
           {user ? "Update User" : "Create User"}

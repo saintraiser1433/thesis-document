@@ -49,6 +49,8 @@ export const authOptions: NextAuthOptions = {
             email: user.email,
             name: user.name,
             role: user.role,
+            // include department so APIs can scope by department
+            departmentId: user.departmentId ?? null,
           }
         } catch (error) {
           console.error('❌ Auth error:', error)
@@ -71,15 +73,17 @@ export const authOptions: NextAuthOptions = {
     },
     async jwt({ token, user }) {
       if (user) {
-        token.id = user.id
-        token.role = user.role
+        token.id = (user as any).id
+        token.role = (user as any).role
+        token.departmentId = (user as any).departmentId ?? null
       }
       return token
     },
     async session({ session, token }) {
       if (token) {
-        session.user.id = token.id as string
-        session.user.role = token.role as string
+        ;(session.user as any).id = token.id as string
+        ;(session.user as any).role = token.role as string
+        ;(session.user as any).departmentId = (token as any).departmentId ?? null
       }
       return session
     }

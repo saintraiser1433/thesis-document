@@ -25,6 +25,8 @@ model User {
 
   // Relations
   thesis                Thesis[]
+  departmentId          String?
+  department            Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   routingSchedulesAsAdmin RoutingSchedule[]
   peerReviewAssignments  PeerReviewAssignment[]
   notifications          Notification[]
@@ -92,11 +94,25 @@ model Thesis {
   course           Course     @relation(fields: [courseId], references: [id], onDelete: Restrict)
   schoolYearId     String
   schoolYear       SchoolYear @relation(fields: [schoolYearId], references: [id], onDelete: Restrict)
+  departmentId     String?
+  department       Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   authors          ThesisAuthor[]
   indexings        Indexing[]
   routingSchedule  RoutingSchedule?
 
   @@map("theses")
+}
+
+model Department {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users   User[]
+  theses  Thesis[]
+
+  @@map("departments")
 }
 
 model ThesisAuthor {

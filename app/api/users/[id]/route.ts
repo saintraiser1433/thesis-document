@@ -25,6 +25,7 @@ export async function PUT(
     const role = String(form.get("role") ?? "")
     const password = String(form.get("password") ?? "")
     const file = form.get("image") as File | null
+    const departmentId = form.get("departmentId")
 
     if (!name || !email || !role) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
@@ -54,7 +55,8 @@ export async function PUT(
     const updateData: any = {
       name,
       email,
-      role
+      role,
+      departmentId: departmentId ? String(departmentId) : null,
     }
 
     // Only update password if provided

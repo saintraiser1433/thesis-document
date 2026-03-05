@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSession } from "next-auth/react"
 import { ColumnDef } from "@tanstack/react-table"
 import { toast } from "react-toastify"
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -66,6 +67,7 @@ interface Thesis {
 }
 
 export default function BrowseThesesPage() {
+  const { data: session } = useSession()
   const [theses, setTheses] = useState<Thesis[]>([])
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [selectedYear, setSelectedYear] = useState("all")
@@ -164,7 +166,18 @@ export default function BrowseThesesPage() {
     status === "ARCHIVED" ||
     (status === "NONE" && (uploaderRole === "ADMIN" || uploaderRole === "PROGRAM_HEAD"))
 
-  const filteredTheses = theses.filter(thesis => {
+  const role = session?.user?.role
+  const departmentId = (session?.user as any)?.departmentId as string | undefined | null
+
+  // Scope theses for Program Head: only their department
+  const scopedTheses =
+    role === "PROGRAM_HEAD" && departmentId
+      ? (theses as any[]).filter(
+          (t) => t.departmentId === departmentId || t.user?.departmentId === departmentId
+        )
+      : theses
+
+  const filteredTheses = scopedTheses.filter(thesis => {
     const pending = isPendingRouting(thesis.routingStatus)
     const archived = isArchived(thesis.routingStatus, thesis.user?.role)
     const matchesCategory = selectedCategory === "all" || thesis.category === selectedCategory
@@ -185,10 +198,10 @@ export default function BrowseThesesPage() {
     return matchesCategory && matchesYear && matchesTab
   })
 
-  const totalArchivedCount = theses.filter(t => isArchived(t.routingStatus, t.user?.role)).length
-  const publishedCount = theses.filter(t => isArchived(t.routingStatus, t.user?.role) && t.isPublishedOnline).length
-  const unpublishedCount = theses.filter(t => isArchived(t.routingStatus, t.user?.role) && !t.isPublishedOnline).length
-  const pendingCount = theses.filter(t => isPendingRouting(t.routingStatus)).length
+  const totalArchivedCount = scopedTheses.filter(t => isArchived(t.routingStatus, t.user?.role)).length
+  const publishedCount = scopedTheses.filter(t => isArchived(t.routingStatus, t.user?.role) && t.isPublishedOnline).length
+  const unpublishedCount = scopedTheses.filter(t => isArchived(t.routingStatus, t.user?.role) && !t.isPublishedOnline).length
+  const pendingCount = scopedTheses.filter(t => isPendingRouting(t.routingStatus)).length
 
   const handleDownload = (thesisId: string) => {
     const thesis = theses.find(t => t.id === thesisId)

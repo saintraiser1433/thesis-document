@@ -12,7 +12,22 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    const role = session.user?.role
+    const userDepartmentId = (session.user as any)?.departmentId ?? null
+
+    const where: any = {}
+
+    // Program Head should only see theses for their department
+    if (role === "PROGRAM_HEAD" && userDepartmentId) {
+      where.OR = [
+        { departmentId: userDepartmentId },
+        // Fallback for older data where thesis.departmentId is null but uploader has department
+        { departmentId: null, user: { departmentId: userDepartmentId } },
+      ]
+    }
+
     const theses = await prisma.thesis.findMany({
+      where: Object.keys(where).length > 0 ? where : undefined,
       include: {
         category: true,
         course: true,
@@ -25,8 +40,16 @@ export async function GET() {
             name: true,
             email: true,
             role: true,
+            departmentId: true,
+            department: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
           },
         },
+        department: true,
       },
       orderBy: {
         createdAt: 'desc'
@@ -50,6 +73,8 @@ export async function GET() {
       course: thesis.course.name,
       courseCode: thesis.course.code,
       schoolYear: thesis.schoolYear.name,
+      departmentId: thesis.departmentId,
+      departmentName: thesis.department ? thesis.department.name : null,
       authors: thesis.authors.map(author => author.name),
       indexings: thesis.indexings.map(indexing => ({
         type: indexing.type,
@@ -117,6 +142,7 @@ export async function POST(request: NextRequest) {
     // Program Head and Admin theses go straight to archive; students/teachers go through routing.
     const role = session.user?.role || ""
     const autoArchive = role === "PROGRAM_HEAD" || role === "ADMIN"
+    const userDepartmentId = (session.user as any)?.departmentId ?? null
 
     const thesis = await prisma.thesis.create({
       data: {
@@ -133,6 +159,7 @@ export async function POST(request: NextRequest) {
         categoryId,
         courseId,
         schoolYearId,
+        departmentId: userDepartmentId,
         authors: {
           create: authors.map((authorName: string) => ({
             name: authorName

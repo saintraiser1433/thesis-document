@@ -64,6 +64,8 @@ interface ThesisOption {
   id: string
   title: string
   routingStatus: string
+  departmentId?: string | null
+  departmentName?: string | null
 }
 
 interface ReviewerOption {
@@ -79,6 +81,8 @@ export default function AdminRoutingPage() {
   const [loading, setLoading] = useState(true)
   const [createOpen, setCreateOpen] = useState(false)
   const [theses, setTheses] = useState<ThesisOption[]>([])
+  const [departments, setDepartments] = useState<{ id: string; name: string }[]>([])
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState("")
   const [reviewers, setReviewers] = useState<ReviewerOption[]>([])
   const [thesisId, setThesisId] = useState("")
   const [selectedReviewerId, setSelectedReviewerId] = useState("")
@@ -92,20 +96,45 @@ export default function AdminRoutingPage() {
 
   useEffect(() => {
     if (createOpen) {
-      Promise.all([fetch("/api/theses"), fetch("/api/users")]).then(
-        async ([tRes, uRes]) => {
+      Promise.all([fetch("/api/theses"), fetch("/api/users"), fetch("/api/departments")]).then(
+        async ([tRes, uRes, dRes]) => {
           if (tRes.ok) {
             const tData = await tRes.json()
-            setTheses(tData.filter((t: ThesisOption) => t.routingStatus === "PENDING_REVIEW"))
+            setTheses(
+              tData
+                .filter((t: ThesisOption) => t.routingStatus === "PENDING_REVIEW")
+                .map((t: any) => ({
+                  id: t.id,
+                  title: t.title,
+                  routingStatus: t.routingStatus,
+                  departmentId: t.departmentId ?? t.user?.departmentId ?? null,
+                  departmentName: t.departmentName ?? t.user?.department?.name ?? null,
+                }))
+            )
           }
           if (uRes.ok) {
             const uData = await uRes.json()
             setReviewers(uData.filter((u: ReviewerOption) => u.role === "PEER_REVIEWER"))
           }
+          if (dRes.ok) {
+            const dData = await dRes.json()
+            setDepartments(dData)
+          }
         }
       )
+    } else {
+      // Reset modal-specific state when closed
+      setSelectedDepartmentId("")
+      setThesisId("")
+      setAssignedReviewers([])
+      setSelectedReviewerId("")
+      setStartDate("")
     }
   }, [createOpen])
+
+  const filteredTheses = selectedDepartmentId
+    ? theses.filter((t) => t.departmentId === selectedDepartmentId)
+    : theses
 
   const handleAddReviewer = () => {
     if (!selectedReviewerId) return
@@ -125,8 +154,8 @@ export default function AdminRoutingPage() {
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!thesisId || !startDate) {
-      toast.error("Please select thesis and start date")
+    if (!selectedDepartmentId || !thesisId || !startDate) {
+      toast.error("Please select department, thesis and start date")
       return
     }
     if (assignedReviewers.length === 0) {
@@ -273,7 +302,7 @@ export default function AdminRoutingPage() {
                   Create Schedule
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                   <DialogTitle>Create Routing Schedule</DialogTitle>
                   <DialogDescription>
@@ -282,25 +311,49 @@ export default function AdminRoutingPage() {
                 </DialogHeader>
                 <form onSubmit={handleCreateSubmit} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="modal-thesis">Thesis (Pending Review)</Label>
-                    <Select value={thesisId} onValueChange={setThesisId} required>
-                      <SelectTrigger id="modal-thesis">
-                        <SelectValue placeholder="Select thesis" />
+                    <Label htmlFor="modal-department">Department</Label>
+                    <Select
+                      value={selectedDepartmentId}
+                      onValueChange={(value) => {
+                        setSelectedDepartmentId(value)
+                        setThesisId("")
+                      }}
+                      required
+                    >
+                      <SelectTrigger id="modal-department">
+                        <SelectValue placeholder="Select department" />
                       </SelectTrigger>
                       <SelectContent>
-                        {theses.map((t) => (
-                          <SelectItem key={t.id} value={t.id}>
-                            {t.title}
+                        {departments.map((d) => (
+                          <SelectItem key={d.id} value={d.id}>
+                            {d.name}
                           </SelectItem>
                         ))}
-                        {theses.length === 0 && (
-                          <SelectItem value="none" disabled>
-                            No thesis pending review
-                          </SelectItem>
-                        )}
                       </SelectContent>
                     </Select>
                   </div>
+                  {selectedDepartmentId && (
+                    <div className="space-y-2">
+                      <Label htmlFor="modal-thesis">Thesis (Pending Review)</Label>
+                      <Select value={thesisId} onValueChange={setThesisId} required>
+                        <SelectTrigger id="modal-thesis">
+                          <SelectValue placeholder="Select thesis" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {filteredTheses.map((t) => (
+                            <SelectItem key={t.id} value={t.id}>
+                              {t.title}
+                            </SelectItem>
+                          ))}
+                          {filteredTheses.length === 0 && (
+                            <SelectItem value="none" disabled>
+                              No thesis pending review for this department
+                            </SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   <div className="space-y-2">
                     <Label htmlFor="modal-reviewer">Peer Reviewers</Label>
                     <div className="flex gap-2">

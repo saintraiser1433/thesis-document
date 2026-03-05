@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSession } from "next-auth/react"
 import { toast } from "react-toastify"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -25,11 +26,13 @@ interface Thesis {
   title: string
   routingStatus: string
   abstract?: string
-  user?: { name: string }
+  departmentId?: string | null
+  user?: { name: string; departmentId?: string | null }
   createdAt?: string
 }
 
 export default function ProgramHeadArchiveApprovalsPage() {
+  const { data: session } = useSession()
   const [theses, setTheses] = useState<Thesis[]>([])
   const [loading, setLoading] = useState(true)
   const [rejectOpen, setRejectOpen] = useState(false)
@@ -42,10 +45,23 @@ export default function ProgramHeadArchiveApprovalsPage() {
     fetch("/api/theses")
       .then((res) => (res.ok ? res.json() : []))
       .then((data: Thesis[]) => {
-        setTheses(data.filter((t) => t.routingStatus === "PENDING_ARCHIVE"))
+        const all = data.filter((t) => t.routingStatus === "PENDING_ARCHIVE")
+        setTheses(all)
       })
       .finally(() => setLoading(false))
   }, [])
+
+  const role = session?.user?.role
+  const departmentId = (session?.user as any)?.departmentId as string | undefined | null
+
+  const visibleTheses =
+    role === "PROGRAM_HEAD" && departmentId
+      ? theses.filter(
+          (t) =>
+            t.departmentId === departmentId ||
+            (t.user as any)?.departmentId === departmentId
+        )
+      : theses
 
   const handleOpenApprove = (thesis: Thesis) => {
     setThesisToApprove(thesis)
@@ -124,7 +140,7 @@ export default function ProgramHeadArchiveApprovalsPage() {
           <CardContent>
             {loading ? (
               <p className="text-muted-foreground py-8 text-center">Loading...</p>
-            ) : theses.length === 0 ? (
+            ) : visibleTheses.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <Inbox className="h-12 w-12 text-muted-foreground/60 mb-3" />
                 <p className="text-muted-foreground">
@@ -133,7 +149,7 @@ export default function ProgramHeadArchiveApprovalsPage() {
               </div>
             ) : (
               <ul className="space-y-4">
-                {theses.map((t) => (
+                {visibleTheses.map((t) => (
                   <li
                     key={t.id}
                     className="flex flex-wrap items-center justify-between gap-4 border rounded-lg p-4"

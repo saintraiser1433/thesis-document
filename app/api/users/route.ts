@@ -23,15 +23,21 @@ export async function GET() {
         role: true,
         image: true,
         createdAt: true,
+        department: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         _count: {
           select: {
-            thesis: true
-          }
-        }
+            thesis: true,
+          },
+        },
       },
       orderBy: {
-        createdAt: 'desc'
-      }
+        createdAt: "desc",
+      },
     })
 
     const usersWithCount = users.map(user => ({
@@ -39,9 +45,11 @@ export async function GET() {
       name: user.name,
       email: user.email,
       role: user.role,
-      createdAt: user.createdAt.toISOString().split('T')[0],
+      createdAt: user.createdAt.toISOString().split("T")[0],
       thesisCount: user._count.thesis,
-      image: user.image || null
+      image: user.image || null,
+      departmentId: user.department?.id ?? null,
+      departmentName: user.department?.name ?? null,
     }))
 
     return NextResponse.json(usersWithCount)
@@ -65,6 +73,7 @@ export async function POST(request: NextRequest) {
     const email = String(form.get("email") ?? "")
     const password = String(form.get("password") ?? "")
     const role = String(form.get("role") ?? "")
+    const departmentId = form.get("departmentId")
     const file = form.get("image") as File | null
 
     if (!name || !email || !password || !role) {
@@ -102,7 +111,8 @@ export async function POST(request: NextRequest) {
         email,
         password: hashedPassword,
         role,
-        image: imageUrl
+        image: imageUrl,
+        departmentId: departmentId ? String(departmentId) : null,
       },
       select: {
         id: true,
@@ -110,14 +120,26 @@ export async function POST(request: NextRequest) {
         email: true,
         role: true,
         image: true,
-        createdAt: true
+        createdAt: true,
+        department: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       }
     })
 
     return NextResponse.json({
-      ...user,
-      createdAt: user.createdAt.toISOString().split('T')[0],
-      thesisCount: 0
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      image: user.image,
+      createdAt: user.createdAt.toISOString().split("T")[0],
+      thesisCount: 0,
+      departmentId: user.department?.id ?? null,
+      departmentName: user.department?.name ?? null,
     }, { status: 201 })
   } catch (error) {
     console.error("Error creating user:", error)
