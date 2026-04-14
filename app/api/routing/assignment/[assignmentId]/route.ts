@@ -62,6 +62,8 @@ export async function GET(
       deadline: assignment.deadline.toISOString(),
       status: assignment.status,
       comment: assignment.comment,
+      reviewFileUrl: assignment.reviewFileUrl,
+      reviewFileMime: assignment.reviewFileMime,
       approved: assignment.approved,
       reviewedAt: assignment.reviewedAt?.toISOString() ?? null,
       round: {
@@ -69,6 +71,8 @@ export async function GET(
         roundNumber: assignment.round.roundNumber,
         status: assignment.round.status,
         thesisFileUrl: assignment.round.thesisFileUrl,
+        routingFileUrl: assignment.round.routingFileUrl,
+        routingFileMime: assignment.round.routingFileMime,
       },
       scheduleId: schedule.id,
       thesis: schedule.thesis,

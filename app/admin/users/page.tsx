@@ -640,7 +640,10 @@ function UserForm({ user, onSubmit, onCancel }: {
               role: value,
               // Only keep department for roles that use it
               departmentId:
-                value === "PROGRAM_HEAD" || value === "TEACHER" || value === "STUDENT"
+                value === "PROGRAM_HEAD" ||
+                value === "TEACHER" ||
+                value === "STUDENT" ||
+                value === "PEER_REVIEWER"
                   ? prev.departmentId
                   : "",
             }))
@@ -660,7 +663,8 @@ function UserForm({ user, onSubmit, onCancel }: {
       </div>
       {(formData.role === "PROGRAM_HEAD" ||
         formData.role === "TEACHER" ||
-        formData.role === "STUDENT") && (
+        formData.role === "STUDENT" ||
+        formData.role === "PEER_REVIEWER") && (
         <div className="grid gap-2">
           <Label htmlFor="department">
             Department {formData.role === "PROGRAM_HEAD" ? "(required)" : "(optional)"}

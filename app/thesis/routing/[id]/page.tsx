@@ -28,6 +28,8 @@ interface Round {
   roundNumber: number
   status: string
   thesisFileUrl: string | null
+  routingFileUrl?: string | null
+  routingFileMime?: string | null
   startedAt: string | null
   completedAt: string | null
   assignments: Assignment[]
@@ -86,8 +88,14 @@ export default function ThesisRoutingDetailPage() {
 
   const handleSubmitRevision = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!revisionFile || revisionFile.type !== "application/pdf") {
-      toast.error("Please select a PDF file")
+    if (
+      !revisionFile ||
+      ![
+        "application/pdf",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      ].includes(revisionFile.type)
+    ) {
+      toast.error("Please select a DOCX or PDF file")
       return
     }
     if (revisionFile.size > 10 * 1024 * 1024) {
@@ -158,18 +166,18 @@ export default function ThesisRoutingDetailPage() {
             <CardHeader>
               <CardTitle>Submit revision for Round {nextRoundNumber}</CardTitle>
               <CardDescription>
-                Round {nextRoundNumber - 1} is complete. Upload your revised PDF to start round {nextRoundNumber}.
+                Round {nextRoundNumber - 1} is complete. Upload your revised DOCX or PDF to start round {nextRoundNumber}.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmitRevision} className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Revised thesis (PDF, max 10MB)</Label>
+                  <Label>Revised thesis (DOCX or PDF, max 10MB)</Label>
                   <div className="flex flex-wrap items-center gap-3">
                     <input
                       id="revision-file"
                       type="file"
-                      accept="application/pdf"
+                      accept=".docx,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf"
                       onChange={(e) => setRevisionFile(e.target.files?.[0] ?? null)}
                       className="sr-only"
                     />
@@ -202,14 +210,14 @@ export default function ThesisRoutingDetailPage() {
                 <CardTitle>Round {round.roundNumber}</CardTitle>
                 <CardDescription>
                   <Badge variant={statusColor(round.status)}>{round.status}</Badge>
-                  {round.thesisFileUrl && (
+                  {(round.routingFileUrl || round.thesisFileUrl) && (
                     <a
-                      href={round.thesisFileUrl}
+                      href={round.routingFileUrl || round.thesisFileUrl || "#"}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="ml-2 text-primary underline"
                     >
-                      View PDF
+                      View document
                     </a>
                   )}
                 </CardDescription>

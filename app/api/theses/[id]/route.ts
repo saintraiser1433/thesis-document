@@ -46,6 +46,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       title: thesis.title,
       abstract: thesis.abstract,
       fileUrl: thesis.fileUrl,
+      graduationDate: thesis.graduationDate ? thesis.graduationDate.toISOString() : null,
       schoolYear: thesis.schoolYear.name,
       isPublishedOnline: thesis.isPublishedOnline,
       publisherName: thesis.publisherName,
@@ -87,6 +88,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       publisherName, 
       publisherLink, 
       citation, 
+      graduationDate,
       authors, 
       indexings 
     } = await request.json()
@@ -115,6 +117,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         publisherName,
         publisherLink,
         citation,
+        graduationDate: graduationDate ? new Date(graduationDate) : null,
         // Update authors
         authors: {
           deleteMany: {},
@@ -143,6 +146,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       title: thesis.title,
       abstract: thesis.abstract,
       fileUrl: thesis.fileUrl,
+      graduationDate: thesis.graduationDate ? thesis.graduationDate.toISOString() : null,
       schoolYear: thesis.schoolYear.name,
       isPublishedOnline: thesis.isPublishedOnline,
       publisherName: thesis.publisherName,

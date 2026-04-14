@@ -23,7 +23,12 @@ export const authOptions: NextAuthOptions = {
           const user = await prisma.user.findUnique({
             where: {
               email: credentials.email
-            }
+            },
+            include: {
+              department: {
+                select: { name: true },
+              },
+            },
           })
 
           if (!user) {
@@ -51,6 +56,7 @@ export const authOptions: NextAuthOptions = {
             role: user.role,
             // include department so APIs can scope by department
             departmentId: user.departmentId ?? null,
+            departmentName: user.department?.name ?? null,
           }
         } catch (error) {
           console.error('❌ Auth error:', error)
@@ -76,6 +82,7 @@ export const authOptions: NextAuthOptions = {
         token.id = (user as any).id
         token.role = (user as any).role
         token.departmentId = (user as any).departmentId ?? null
+        token.departmentName = (user as any).departmentName ?? null
       }
       return token
     },
@@ -84,6 +91,7 @@ export const authOptions: NextAuthOptions = {
         ;(session.user as any).id = token.id as string
         ;(session.user as any).role = token.role as string
         ;(session.user as any).departmentId = (token as any).departmentId ?? null
+        ;(session.user as any).departmentName = (token as any).departmentName ?? null
       }
       return session
     }

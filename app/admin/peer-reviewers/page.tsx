@@ -6,12 +6,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { DataTable } from "@/components/ui/data-table"
 import { ColumnDef } from "@tanstack/react-table"
 import { UserCheck, Mail, User } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 
 interface PeerReviewer {
   id: string
   name: string
   email: string
   role: string
+  isGeneralReviewer: boolean
   createdAt: string
   thesisCount: number
 }
@@ -28,6 +31,27 @@ export default function AdminPeerReviewersPage() {
       })
       .finally(() => setLoading(false))
   }, [])
+
+  const toggleGeneralReviewer = async (reviewer: PeerReviewer) => {
+    try {
+      const res = await fetch(`/api/users/${reviewer.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isGeneralReviewer: !reviewer.isGeneralReviewer }),
+      })
+      const result = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(result.error || "Failed to update reviewer")
+      }
+      setReviewers((prev) =>
+        prev.map((r) =>
+          r.id === reviewer.id ? { ...r, isGeneralReviewer: !r.isGeneralReviewer } : r
+        )
+      )
+    } catch (error) {
+      console.error(error)
+    }
+  }
 
   const columns: ColumnDef<PeerReviewer>[] = [
     {
@@ -54,6 +78,30 @@ export default function AdminPeerReviewersPage() {
       accessorKey: "createdAt",
       header: "Added",
       cell: ({ row }) => new Date(row.getValue("createdAt") as string).toLocaleDateString(),
+    },
+    {
+      id: "scope",
+      header: "Scope",
+      cell: ({ row }) =>
+        row.original.isGeneralReviewer ? (
+          <Badge variant="secondary">General</Badge>
+        ) : (
+          <span className="text-muted-foreground text-sm">Department</span>
+        ),
+    },
+    {
+      id: "actions",
+      header: "Action",
+      cell: ({ row }) => (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => toggleGeneralReviewer(row.original)}
+        >
+          {row.original.isGeneralReviewer ? "Set Department-only" : "Set General"}
+        </Button>
+      ),
     },
   ]
 

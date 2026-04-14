@@ -11,6 +11,12 @@ function addDays(date: Date, days: number) {
   return d
 }
 
+function addMonths(date: Date, months: number) {
+  const d = new Date(date)
+  d.setMonth(d.getMonth() + months)
+  return d
+}
+
 // GET /api/routing - List schedules (admin: all, student/teacher: own theses)
 export async function GET() {
   try {
@@ -38,6 +44,7 @@ export async function GET() {
             title: true,
             userId: true,
             routingStatus: true,
+            graduationDate: true,
             user: { select: { name: true, email: true } },
           },
         },
@@ -70,6 +77,8 @@ export async function GET() {
         roundNumber: r.roundNumber,
         status: r.status,
         thesisFileUrl: r.thesisFileUrl,
+        routingFileUrl: r.routingFileUrl,
+        routingFileMime: r.routingFileMime,
         startedAt: r.startedAt?.toISOString() ?? null,
         completedAt: r.completedAt?.toISOString() ?? null,
         assignments: r.assignments.map((a) => ({
@@ -149,6 +158,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const start = new Date(startDate)
+    if (Number.isNaN(start.getTime())) {
+      return NextResponse.json({ error: "Invalid startDate" }, { status: 400 })
+    }
+
+    if (thesis.graduationDate) {
+      const latestAllowedStart = addMonths(new Date(thesis.graduationDate), -1)
+      if (start > latestAllowedStart) {
+        return NextResponse.json(
+          {
+            error: `Start date must be on or before ${latestAllowedStart.toISOString().slice(0, 10)} (1 month before graduation).`,
+          },
+          { status: 400 }
+        )
+      }
+    }
+
     const reviewersFromDb = await prisma.user.findMany({
       where: { id: { in: uniqueReviewers } },
     })
@@ -163,7 +189,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const start = new Date(startDate)
+    const thesisDepartmentId = thesis.departmentId ?? thesis.user.departmentId ?? null
+    const invalidDepartmentReviewers = reviewersFromDb.filter(
+      (reviewer) =>
+        !reviewer.isGeneralReviewer &&
+        thesisDepartmentId &&
+        reviewer.departmentId !== thesisDepartmentId
+    )
+    if (invalidDepartmentReviewers.length > 0) {
+      return NextResponse.json(
+        { error: "Selected reviewers must belong to the same department as the thesis or be general reviewers" },
+        { status: 400 }
+      )
+    }
 
     const schedule = await prisma.$transaction(async (tx) => {
       const s = await tx.routingSchedule.create({
@@ -181,6 +219,8 @@ export async function POST(request: NextRequest) {
           roundNumber: 1,
           status: RoundStatus.IN_PROGRESS,
           thesisFileUrl: thesis.fileUrl,
+          routingFileUrl: thesis.fileUrl,
+          routingFileMime: "application/pdf",
           startedAt: start,
         },
       })

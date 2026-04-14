@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
 import { toast } from "react-toastify"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -41,6 +42,7 @@ interface Indexing {
 
 export default function ThesisUploadPage() {
   const router = useRouter()
+  const { data: session } = useSession()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState({
     title: "",
@@ -48,6 +50,7 @@ export default function ThesisUploadPage() {
     categoryId: "",
     courseId: "",
     schoolYear: "",
+    graduationDate: "",
     isPublishedOnline: false,
     publisherName: "",
     publisherLink: "",
@@ -179,6 +182,7 @@ export default function ThesisUploadPage() {
         publisherName: formData.publisherName || null,
         publisherLink: formData.publisherLink || null,
         citation: formData.citation || null,
+        graduationDate: formData.graduationDate ? new Date(formData.graduationDate).toISOString() : null,
         authors: authors.filter(author => author.name.trim()).map(author => author.name),
         indexings: indexings.filter(idx => idx.type && idx.url)
       }
@@ -296,6 +300,29 @@ export default function ThesisUploadPage() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+              <div className="grid gap-2">
+                <Label>Your Department</Label>
+                <Input
+                  value={session?.user?.departmentName || "Department not set"}
+                  readOnly
+                  disabled
+                />
+                <p className="text-xs text-muted-foreground">
+                  Thesis uploads are associated with your account department.
+                </p>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="graduationDate">Graduation Date</Label>
+                <Input
+                  id="graduationDate"
+                  type="date"
+                  value={formData.graduationDate}
+                  onChange={(e) => setFormData({ ...formData, graduationDate: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Used to enforce routing schedules starting at least one month before graduation.
+                </p>
               </div>
             </CardContent>
           </Card>

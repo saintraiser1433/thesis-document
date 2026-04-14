@@ -19,6 +19,7 @@ model User {
   email     String   @unique
   password  String
   role      UserRole @default(STUDENT)
+  isGeneralReviewer Boolean @default(false)
   image     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -76,6 +77,7 @@ model Thesis {
   title             String
   abstract          String
   fileUrl           String?
+  graduationDate    DateTime?
   isPublishedOnline Boolean  @default(false)
   publisherName     String?
   publisherLink     String?
@@ -196,10 +198,13 @@ model RoutingRound {
   roundNumber   Int
   status        RoundStatus @default(PENDING)
   thesisFileUrl String?
+  routingFileUrl String?
+  routingFileMime String?
   startedAt     DateTime?
   completedAt   DateTime?
   assignments   PeerReviewAssignment[]
 
+  @@unique([scheduleId, roundNumber])
   @@map("routing_rounds")
 }
 
@@ -213,6 +218,8 @@ model PeerReviewAssignment {
   deadline   DateTime
   status     AssignmentStatus @default(PENDING)
   comment    String?
+  reviewFileUrl String?
+  reviewFileMime String?
   approved   Boolean?
   reviewedAt DateTime?
   createdAt  DateTime @default(now())

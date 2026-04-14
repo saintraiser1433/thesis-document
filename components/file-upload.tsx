@@ -21,6 +21,11 @@ export function FileUpload({
   maxSize = 10,
   className = ""
 }: FileUploadProps) {
+  const acceptedExtensions = accept
+    .split(",")
+    .map((part) => part.trim().toLowerCase())
+    .filter(Boolean)
+
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'success' | 'error'>('idle')
@@ -32,10 +37,17 @@ export function FileUpload({
     if (!file) return
 
     // Validate file type
-    if (accept && !file.name.toLowerCase().endsWith(accept.replace('.', ''))) {
-      setErrorMessage(`Please select a ${accept} file`)
-      setUploadStatus('error')
-      return
+    if (acceptedExtensions.length > 0) {
+      const fileName = file.name.toLowerCase()
+      const isAccepted = acceptedExtensions.some((extension) => {
+        if (!extension.startsWith(".")) return false
+        return fileName.endsWith(extension)
+      })
+      if (!isAccepted) {
+        setErrorMessage(`Please select one of the allowed file types: ${accept}`)
+        setUploadStatus('error')
+        return
+      }
     }
 
     // Validate file size

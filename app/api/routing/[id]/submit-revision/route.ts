@@ -14,6 +14,11 @@ function addDays(date: Date, days: number) {
   return d
 }
 
+const ALLOWED_REVISION_MIME_TYPES = new Set([
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+])
+
 // POST /api/routing/[id]/submit-revision - Student uploads revised thesis for next round
 export async function POST(
   request: NextRequest,
@@ -35,9 +40,9 @@ export async function POST(
         { status: 400 }
       )
     }
-    if (file.type !== "application/pdf") {
+    if (!ALLOWED_REVISION_MIME_TYPES.has(file.type)) {
       return NextResponse.json(
-        { error: "Only PDF files are allowed" },
+        { error: "Only DOCX and PDF files are allowed" },
         { status: 400 }
       )
     }
@@ -83,6 +88,16 @@ export async function POST(
       )
     }
 
+    const existingNextRound = schedule.rounds.find(
+      (r) => r.roundNumber === nextRoundNumber
+    )
+    if (existingNextRound) {
+      return NextResponse.json(
+        { error: `Revision for round ${nextRoundNumber} was already submitted.` },
+        { status: 400 }
+      )
+    }
+
     const firstRound = schedule.rounds[0]
     if (!firstRound || firstRound.assignments.length === 0) {
       return NextResponse.json(
@@ -117,6 +132,8 @@ export async function POST(
           roundNumber: nextRoundNumber,
           status: RoundStatus.IN_PROGRESS,
           thesisFileUrl: fileUrl,
+          routingFileUrl: fileUrl,
+          routingFileMime: file.type,
           startedAt: now,
         },
       })

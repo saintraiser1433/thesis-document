@@ -33,11 +33,15 @@ interface AssignmentDetail {
   status: string
   comment: string | null
   approved: boolean | null
+  reviewFileUrl?: string | null
+  reviewFileMime?: string | null
   round: {
     id: string
     roundNumber: number
     status: string
     thesisFileUrl: string | null
+    routingFileUrl?: string | null
+    routingFileMime?: string | null
   }
   scheduleId: string
   thesis: { id: string; title: string; fileUrl: string | null }
@@ -56,6 +60,7 @@ export default function PeerReviewerAssignmentDetailPage() {
   const [loading, setLoading] = useState(true)
   const [comment, setComment] = useState("")
   const [approved, setApproved] = useState<boolean | null>(null)
+  const [reviewFile, setReviewFile] = useState<File | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
 
@@ -83,14 +88,15 @@ export default function PeerReviewerAssignmentDetailPage() {
     }
     setSubmitting(true)
     try {
+      const form = new FormData()
+      form.append("assignmentId", data.id)
+      form.append("approved", String(approved))
+      if (comment) form.append("comment", comment)
+      if (reviewFile) form.append("file", reviewFile)
+
       const res = await fetch(`/api/routing/${data.scheduleId}/submit-review`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          assignmentId: data.id,
-          comment: comment || undefined,
-          approved,
-        }),
+        body: form,
       })
       const result = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -105,6 +111,8 @@ export default function PeerReviewerAssignmentDetailPage() {
               status: approved ? "APPROVED" : "REJECTED",
               comment: comment || null,
               approved,
+              reviewFileUrl: result.reviewFileUrl ?? prev.reviewFileUrl,
+              reviewFileMime: result.reviewFileMime ?? prev.reviewFileMime,
             }
           : null
       )
@@ -127,7 +135,9 @@ export default function PeerReviewerAssignmentDetailPage() {
     )
   }
 
-  const fileUrl = data.round.thesisFileUrl || data.thesis.fileUrl
+  const fileUrl = data.round.routingFileUrl || data.round.thesisFileUrl || data.thesis.fileUrl
+  const isPdfDocument =
+    (data.round.routingFileMime ?? "application/pdf") === "application/pdf"
 
   return (
     <DashboardLayout>
@@ -203,30 +213,36 @@ export default function PeerReviewerAssignmentDetailPage() {
                   </a>
                 </Button>
               </div>
-              <div className="h-[600px] w-full rounded-md border overflow-hidden bg-muted/30">
-                <object
-                  data={fileUrl}
-                  type="application/pdf"
-                  className="h-full w-full"
-                >
-                  <iframe
-                    src={fileUrl}
-                    title="Thesis PDF"
+              {isPdfDocument ? (
+                <div className="h-[600px] w-full rounded-md border overflow-hidden bg-muted/30">
+                  <object
+                    data={fileUrl}
+                    type="application/pdf"
                     className="h-full w-full"
-                  />
-                  <div className="p-4 text-sm">
-                    Unable to display PDF preview. You can
-                    <button
-                      type="button"
-                      className="ml-1 underline"
-                      onClick={() => window.open(fileUrl, "_blank")}
-                    >
-                      open it in a new tab
-                    </button>
-                    .
-                  </div>
-                </object>
-              </div>
+                  >
+                    <iframe
+                      src={fileUrl}
+                      title="Thesis PDF"
+                      className="h-full w-full"
+                    />
+                    <div className="p-4 text-sm">
+                      Unable to display PDF preview. You can
+                      <button
+                        type="button"
+                        className="ml-1 underline"
+                        onClick={() => window.open(fileUrl, "_blank")}
+                      >
+                        open it in a new tab
+                      </button>
+                      .
+                    </div>
+                  </object>
+                </div>
+              ) : (
+                <div className="rounded-md border p-4 text-sm text-muted-foreground">
+                  Preview is unavailable for DOCX files. Use &quot;Open in new tab&quot; to download or open the document.
+                </div>
+              )}
             </CardContent>
           )}
         </Card>
@@ -249,6 +265,30 @@ export default function PeerReviewerAssignmentDetailPage() {
                     placeholder="Optional feedback for the author... (you can format text and add emphasis)"
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label>Upload reviewed DOCX (optional)</Label>
+                  <input
+                    type="file"
+                    accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    onChange={(e) => setReviewFile(e.target.files?.[0] ?? null)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Upload a DOCX if you want to return a version with tracked changes/comments.
+                  </p>
+                </div>
+                {data.reviewFileUrl && (
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">Uploaded DOCX: </span>
+                    <a
+                      className="text-primary underline"
+                      href={data.reviewFileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Open
+                    </a>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label>Decision</Label>
                   <div className="flex gap-4">

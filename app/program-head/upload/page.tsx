@@ -48,6 +48,7 @@ export default function UploadThesisPage() {
     categoryId: "",
     courseId: "",
     schoolYear: "",
+    graduationDate: "",
     isPublishedOnline: false,
     publisherName: "",
     publisherLink: "",
@@ -195,6 +196,7 @@ export default function UploadThesisPage() {
         publisherName: formData.publisherName || null,
         publisherLink: formData.publisherLink || null,
         citation: formData.citation || null,
+        graduationDate: formData.graduationDate ? new Date(formData.graduationDate).toISOString() : null,
         authors: authors.filter(author => author.name.trim()).map(author => author.name),
         indexings: indexings.filter(idx => idx.type && idx.url)
       }
@@ -329,6 +331,18 @@ export default function UploadThesisPage() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="graduationDate">Graduation Date</Label>
+                <Input
+                  id="graduationDate"
+                  type="date"
+                  value={formData.graduationDate}
+                  onChange={(e) => setFormData({ ...formData, graduationDate: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Used to enforce routing schedules starting at least one month before graduation.
+                </p>
               </div>
             </CardContent>
           </Card>

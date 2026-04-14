@@ -23,6 +23,7 @@ export async function PUT(
     const name = String(form.get("name") ?? "")
     const email = String(form.get("email") ?? "")
     const role = String(form.get("role") ?? "")
+    const isGeneralReviewer = String(form.get("isGeneralReviewer") ?? "") === "true"
     const password = String(form.get("password") ?? "")
     const file = form.get("image") as File | null
     const departmentId = form.get("departmentId")
@@ -56,6 +57,7 @@ export async function PUT(
       name,
       email,
       role,
+      isGeneralReviewer,
       departmentId: departmentId ? String(departmentId) : null,
     }
 
@@ -84,6 +86,7 @@ export async function PUT(
         name: true,
         email: true,
         role: true,
+        isGeneralReviewer: true,
         image: true,
         createdAt: true,
         _count: {
@@ -99,12 +102,64 @@ export async function PUT(
       name: user.name,
       email: user.email,
       role: user.role,
+      isGeneralReviewer: user.isGeneralReviewer,
       image: user.image,
       createdAt: user.createdAt.toISOString().split('T')[0],
       thesisCount: user._count.thesis
     })
   } catch (error) {
     console.error("Error updating user:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+}
+
+// PATCH /api/users/[id] - Partial updates (e.g., general reviewer flag)
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session || session.user?.role !== "ADMIN") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const { id } = await params
+    const body = await request.json().catch(() => ({}))
+    const { isGeneralReviewer } = body as { isGeneralReviewer?: boolean }
+
+    if (typeof isGeneralReviewer !== "boolean") {
+      return NextResponse.json(
+        { error: "isGeneralReviewer must be a boolean" },
+        { status: 400 }
+      )
+    }
+
+    const existingUser = await prisma.user.findUnique({
+      where: { id },
+      select: { id: true, role: true },
+    })
+
+    if (!existingUser) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 })
+    }
+
+    if (existingUser.role !== "PEER_REVIEWER" && isGeneralReviewer) {
+      return NextResponse.json(
+        { error: "Only peer reviewers can be marked as general reviewers" },
+        { status: 400 }
+      )
+    }
+
+    const updated = await prisma.user.update({
+      where: { id },
+      data: { isGeneralReviewer },
+      select: { id: true, isGeneralReviewer: true },
+    })
+
+    return NextResponse.json(updated)
+  } catch (error) {
+    console.error("Error patching user:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

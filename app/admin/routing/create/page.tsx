@@ -24,6 +24,7 @@ interface Thesis {
   routingStatus: string
   departmentId?: string | null
   departmentName?: string | null
+  graduationDate?: string | null
   user?: { name: string }
 }
 
@@ -32,6 +33,8 @@ interface User {
   name: string
   email: string
   role: string
+  departmentId?: string | null
+  isGeneralReviewer?: boolean
 }
 
 export default function AdminRoutingCreatePage() {
@@ -60,6 +63,7 @@ export default function AdminRoutingCreatePage() {
                 routingStatus: t.routingStatus,
                 departmentId: t.departmentId ?? t.user?.departmentId ?? null,
                 departmentName: t.departmentName ?? t.user?.department?.name ?? null,
+                graduationDate: t.graduationDate ?? null,
                 user: t.user,
               }))
           )
@@ -79,6 +83,31 @@ export default function AdminRoutingCreatePage() {
   const filteredTheses = selectedDepartmentId
     ? theses.filter((t) => t.departmentId === selectedDepartmentId)
     : theses
+  const selectedThesis = filteredTheses.find((t) => t.id === thesisId)
+  const filteredReviewers = selectedDepartmentId
+    ? reviewers.filter(
+        (reviewer) =>
+          reviewer.isGeneralReviewer ||
+          reviewer.departmentId === selectedDepartmentId
+      )
+    : reviewers
+  const latestAllowedStartDate = selectedThesis?.graduationDate
+    ? new Date(
+        new Date(selectedThesis.graduationDate).setMonth(
+          new Date(selectedThesis.graduationDate).getMonth() - 1
+        )
+      )
+    : null
+
+  const applyRecommendedStartDate = () => {
+    if (!latestAllowedStartDate) return
+    const localDateTime = new Date(
+      latestAllowedStartDate.getTime() - latestAllowedStartDate.getTimezoneOffset() * 60000
+    )
+      .toISOString()
+      .slice(0, 16)
+    setStartDate(localDateTime)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -152,6 +181,8 @@ export default function AdminRoutingCreatePage() {
                   onValueChange={(value) => {
                     setSelectedDepartmentId(value)
                     setThesisId("")
+                    setReviewer1Id("")
+                    setReviewer2Id("")
                   }}
                   required
                 >
@@ -187,6 +218,11 @@ export default function AdminRoutingCreatePage() {
                       )}
                     </SelectContent>
                   </Select>
+                  {selectedThesis?.graduationDate && (
+                    <p className="text-xs text-muted-foreground">
+                      Graduation date: {new Date(selectedThesis.graduationDate).toLocaleDateString()}
+                    </p>
+                  )}
                 </div>
               )}
               <div className="space-y-2">
@@ -196,12 +232,12 @@ export default function AdminRoutingCreatePage() {
                     <SelectValue placeholder="Select reviewer" />
                   </SelectTrigger>
                   <SelectContent>
-                    {reviewers.map((u) => (
+                    {filteredReviewers.map((u) => (
                       <SelectItem key={u.id} value={u.id}>
-                        {u.name} ({u.email})
+                        {u.name} ({u.email}){u.isGeneralReviewer ? " (General)" : ""}
                       </SelectItem>
                     ))}
-                    {reviewers.length === 0 && (
+                    {filteredReviewers.length === 0 && (
                       <SelectItem value="none" disabled>
                         No peer reviewers. Add users with Peer Reviewer role.
                       </SelectItem>
@@ -216,9 +252,9 @@ export default function AdminRoutingCreatePage() {
                     <SelectValue placeholder="Select reviewer" />
                   </SelectTrigger>
                   <SelectContent>
-                    {reviewers.map((u) => (
+                    {filteredReviewers.map((u) => (
                       <SelectItem key={u.id} value={u.id}>
-                        {u.name} ({u.email})
+                        {u.name} ({u.email}){u.isGeneralReviewer ? " (General)" : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -233,6 +269,16 @@ export default function AdminRoutingCreatePage() {
                   onChange={(e) => setStartDate(e.target.value)}
                   required
                 />
+                {latestAllowedStartDate && (
+                  <p className="text-xs text-muted-foreground">
+                    Latest allowed start date (1 month before graduation): {latestAllowedStartDate.toLocaleDateString()}
+                  </p>
+                )}
+                {latestAllowedStartDate && (
+                  <Button type="button" variant="outline" size="sm" onClick={applyRecommendedStartDate}>
+                    Auto-set to latest allowed date
+                  </Button>
+                )}
                 <p className="text-xs text-muted-foreground">
                   Each reviewer has 2 weeks. Reviewer 1 deadline = start + 14 days, Reviewer 2 = start + 28 days.
                 </p>

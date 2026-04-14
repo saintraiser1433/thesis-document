@@ -4,6 +4,13 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { createNotification } from "@/lib/notifications"
 import { AssignmentStatus, RoundStatus } from "@prisma/client"
+import { writeFile, mkdir } from "fs/promises"
+import { join } from "path"
+import { existsSync } from "fs"
+
+const ALLOWED_REVIEW_UPLOAD_MIME_TYPES = new Set([
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+])
 
 // POST /api/routing/[id]/submit-review - Peer reviewer submits comment + approve/reject
 export async function POST(
@@ -20,14 +27,66 @@ export async function POST(
     }
 
     const { id: scheduleId } = await params
-    const body = await request.json()
-    const { assignmentId, comment, approved } = body
+    const contentType = request.headers.get("content-type") || ""
+    let assignmentId: string | undefined
+    let comment: string | undefined
+    let approved: boolean | undefined
+    let file: File | null = null
+
+    if (contentType.includes("multipart/form-data")) {
+      const form = await request.formData()
+      assignmentId = String(form.get("assignmentId") ?? "") || undefined
+      comment = String(form.get("comment") ?? "") || undefined
+      const approvedValue = String(form.get("approved") ?? "")
+      approved =
+        approvedValue === "true"
+          ? true
+          : approvedValue === "false"
+            ? false
+            : undefined
+      file = (form.get("file") as File | null) ?? null
+    } else {
+      const body = await request.json()
+      assignmentId = body?.assignmentId
+      comment = body?.comment
+      approved = body?.approved
+    }
 
     if (!assignmentId || typeof approved !== "boolean") {
       return NextResponse.json(
         { error: "Missing assignmentId or approved (boolean)" },
         { status: 400 }
       )
+    }
+
+    let reviewFileUrl: string | null = null
+    let reviewFileMime: string | null = null
+    if (file) {
+      if (!ALLOWED_REVIEW_UPLOAD_MIME_TYPES.has(file.type)) {
+        return NextResponse.json(
+          { error: "Only DOCX files are allowed for reviewer uploads" },
+          { status: 400 }
+        )
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        return NextResponse.json(
+          { error: "File size must be less than 10MB" },
+          { status: 400 }
+        )
+      }
+
+      const bytes = await file.arrayBuffer()
+      const buffer = Buffer.from(bytes)
+      const uploadsDir = join(process.cwd(), "public", "uploads")
+      if (!existsSync(uploadsDir)) {
+        await mkdir(uploadsDir, { recursive: true })
+      }
+      const timestamp = Date.now()
+      const filename = `${timestamp}-${file.name}`
+      const filepath = join(uploadsDir, filename)
+      await writeFile(filepath, buffer)
+      reviewFileUrl = `/uploads/${filename}`
+      reviewFileMime = file.type
     }
 
     const assignment = await prisma.peerReviewAssignment.findUnique({
@@ -96,6 +155,8 @@ export async function POST(
         where: { id: assignmentId },
         data: {
           comment: comment ?? null,
+          reviewFileUrl,
+          reviewFileMime,
           approved,
           reviewedAt: new Date(),
           status: approved ? AssignmentStatus.APPROVED : AssignmentStatus.REJECTED,
@@ -166,7 +227,7 @@ export async function POST(
     })
 
     await Promise.all(notifications)
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true, reviewFileUrl, reviewFileMime })
   } catch (error) {
     console.error("Error submitting review:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

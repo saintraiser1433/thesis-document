@@ -66,6 +66,7 @@ interface ThesisOption {
   routingStatus: string
   departmentId?: string | null
   departmentName?: string | null
+  graduationDate?: string | null
 }
 
 interface ReviewerOption {
@@ -73,6 +74,8 @@ interface ReviewerOption {
   name: string
   email: string
   role: string
+  departmentId?: string | null
+  isGeneralReviewer?: boolean
 }
 
 export default function AdminRoutingPage() {
@@ -109,6 +112,7 @@ export default function AdminRoutingPage() {
                   routingStatus: t.routingStatus,
                   departmentId: t.departmentId ?? t.user?.departmentId ?? null,
                   departmentName: t.departmentName ?? t.user?.department?.name ?? null,
+                  graduationDate: t.graduationDate ?? null,
                 }))
             )
           }
@@ -135,6 +139,21 @@ export default function AdminRoutingPage() {
   const filteredTheses = selectedDepartmentId
     ? theses.filter((t) => t.departmentId === selectedDepartmentId)
     : theses
+  const selectedThesis = filteredTheses.find((t) => t.id === thesisId)
+  const filteredReviewers = selectedDepartmentId
+    ? reviewers.filter(
+        (reviewer) =>
+          reviewer.isGeneralReviewer ||
+          reviewer.departmentId === selectedDepartmentId
+      )
+    : reviewers
+  const latestAllowedStartDate = selectedThesis?.graduationDate
+    ? new Date(
+        new Date(selectedThesis.graduationDate).setMonth(
+          new Date(selectedThesis.graduationDate).getMonth() - 1
+        )
+      )
+    : null
 
   const handleAddReviewer = () => {
     if (!selectedReviewerId) return
@@ -317,6 +336,8 @@ export default function AdminRoutingPage() {
                       onValueChange={(value) => {
                         setSelectedDepartmentId(value)
                         setThesisId("")
+                        setAssignedReviewers([])
+                        setSelectedReviewerId("")
                       }}
                       required
                     >
@@ -352,6 +373,11 @@ export default function AdminRoutingPage() {
                           )}
                         </SelectContent>
                       </Select>
+                      {selectedThesis?.graduationDate && (
+                        <p className="text-xs text-muted-foreground">
+                          Graduation date: {new Date(selectedThesis.graduationDate).toLocaleDateString()}
+                        </p>
+                      )}
                     </div>
                   )}
                   <div className="space-y-2">
@@ -365,17 +391,17 @@ export default function AdminRoutingPage() {
                           <SelectValue placeholder="Select reviewer" />
                         </SelectTrigger>
                         <SelectContent>
-                          {reviewers
+                          {filteredReviewers
                             .filter(
                               (u) =>
                                 !assignedReviewers.some((ar) => ar.id === u.id)
                             )
                             .map((u) => (
                               <SelectItem key={u.id} value={u.id}>
-                                {u.name} ({u.email})
+                                {u.name} ({u.email}){u.isGeneralReviewer ? " (General)" : ""}
                               </SelectItem>
                             ))}
-                          {reviewers.length === 0 && (
+                          {filteredReviewers.length === 0 && (
                             <SelectItem value="none" disabled>
                               No peer reviewers. Add users with Peer Reviewer role.
                             </SelectItem>
@@ -424,6 +450,11 @@ export default function AdminRoutingPage() {
                       onChange={(e) => setStartDate(e.target.value)}
                       required
                     />
+                    {latestAllowedStartDate && (
+                      <p className="text-xs text-muted-foreground">
+                        Latest allowed start date (1 month before graduation): {latestAllowedStartDate.toLocaleDateString()}
+                      </p>
+                    )}
                     <p className="text-xs text-muted-foreground">
                       Reviewer 1 deadline = start + 14 days, Reviewer 2 = start + 28 days.
                     </p>

@@ -61,6 +61,7 @@ export async function GET() {
       title: thesis.title,
       abstract: thesis.abstract,
       fileUrl: thesis.fileUrl,
+      graduationDate: thesis.graduationDate ? thesis.graduationDate.toISOString() : null,
       isPublishedOnline: thesis.isPublishedOnline,
       publisherName: thesis.publisherName,
       publisherLink: thesis.publisherLink,
@@ -116,6 +117,7 @@ export async function POST(request: NextRequest) {
       publisherName,
       publisherLink,
       citation,
+      graduationDate,
       authors,
       indexings
     } = body
@@ -154,6 +156,7 @@ export async function POST(request: NextRequest) {
         publisherName: publisherName || null,
         publisherLink: publisherLink || null,
         citation: citation || null,
+        graduationDate: graduationDate ? new Date(graduationDate) : null,
         uploadedBy: session.user?.name || "Unknown",
         userId: session.user?.id || "",
         categoryId,
@@ -186,6 +189,7 @@ export async function POST(request: NextRequest) {
       title: thesis.title,
       abstract: thesis.abstract,
       fileUrl: thesis.fileUrl,
+      graduationDate: thesis.graduationDate ? thesis.graduationDate.toISOString() : null,
       isPublishedOnline: thesis.isPublishedOnline,
       publisherName: thesis.publisherName,
       publisherLink: thesis.publisherLink,

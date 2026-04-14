@@ -21,6 +21,7 @@ export async function GET() {
         name: true,
         email: true,
         role: true,
+        isGeneralReviewer: true,
         image: true,
         createdAt: true,
         department: {
@@ -45,6 +46,7 @@ export async function GET() {
       name: user.name,
       email: user.email,
       role: user.role,
+      isGeneralReviewer: user.isGeneralReviewer,
       createdAt: user.createdAt.toISOString().split("T")[0],
       thesisCount: user._count.thesis,
       image: user.image || null,
@@ -73,6 +75,7 @@ export async function POST(request: NextRequest) {
     const email = String(form.get("email") ?? "")
     const password = String(form.get("password") ?? "")
     const role = String(form.get("role") ?? "")
+    const isGeneralReviewer = String(form.get("isGeneralReviewer") ?? "") === "true"
     const departmentId = form.get("departmentId")
     const file = form.get("image") as File | null
 
@@ -111,6 +114,7 @@ export async function POST(request: NextRequest) {
         email,
         password: hashedPassword,
         role,
+        isGeneralReviewer,
         image: imageUrl,
         departmentId: departmentId ? String(departmentId) : null,
       },
@@ -119,6 +123,7 @@ export async function POST(request: NextRequest) {
         name: true,
         email: true,
         role: true,
+        isGeneralReviewer: true,
         image: true,
         createdAt: true,
         department: {
@@ -135,6 +140,7 @@ export async function POST(request: NextRequest) {
       name: user.name,
       email: user.email,
       role: user.role,
+      isGeneralReviewer: user.isGeneralReviewer,
       image: user.image,
       createdAt: user.createdAt.toISOString().split("T")[0],
       thesisCount: 0,
