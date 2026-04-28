@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import dynamic from "next/dynamic"
 import { useParams } from "next/navigation"
 import Link from "next/link"
@@ -9,7 +9,7 @@ import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { ArrowLeft, FileText, User, Send } from "lucide-react"
+import { ArrowLeft, FileText, Upload, User, Send } from "lucide-react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -61,6 +61,7 @@ export default function PeerReviewerAssignmentDetailPage() {
   const [comment, setComment] = useState("")
   const [approved, setApproved] = useState<boolean | null>(null)
   const [reviewFile, setReviewFile] = useState<File | null>(null)
+  const reviewFileInputRef = useRef<HTMLInputElement>(null)
   const [submitting, setSubmitting] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
 
@@ -267,11 +268,33 @@ export default function PeerReviewerAssignmentDetailPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Upload reviewed DOCX (optional)</Label>
-                  <input
-                    type="file"
-                    accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                    onChange={(e) => setReviewFile(e.target.files?.[0] ?? null)}
-                  />
+                  <div className="rounded-lg border-2 border-dashed border-muted-foreground/30 p-4 bg-muted/20">
+                    <input
+                      ref={reviewFileInputRef}
+                      type="file"
+                      accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                      onChange={(e) => setReviewFile(e.target.files?.[0] ?? null)}
+                      className="hidden"
+                    />
+                    <div className="flex flex-col items-center gap-3 text-center">
+                      <Upload className="h-6 w-6 text-muted-foreground" />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => reviewFileInputRef.current?.click()}
+                      >
+                        Choose DOCX file
+                      </Button>
+                      <p className="text-xs text-muted-foreground">
+                        Drag and drop style upload area. Click button to select a DOCX file.
+                      </p>
+                      {reviewFile && (
+                        <div className="text-sm">
+                          <span className="font-medium">Selected:</span> {reviewFile.name}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     Upload a DOCX if you want to return a version with tracked changes/comments.
                   </p>

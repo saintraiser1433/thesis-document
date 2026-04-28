@@ -17,6 +17,10 @@ function addMonths(date: Date, months: number) {
   return d
 }
 
+function toUtcDateOnlyTimestamp(date: Date) {
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
+}
+
 // GET /api/routing - List schedules (admin: all, student/teacher: own theses)
 export async function GET() {
   try {
@@ -165,7 +169,10 @@ export async function POST(request: NextRequest) {
 
     if (thesis.graduationDate) {
       const latestAllowedStart = addMonths(new Date(thesis.graduationDate), -1)
-      if (start > latestAllowedStart) {
+      if (
+        toUtcDateOnlyTimestamp(start) >
+        toUtcDateOnlyTimestamp(latestAllowedStart)
+      ) {
         return NextResponse.json(
           {
             error: `Start date must be on or before ${latestAllowedStart.toISOString().slice(0, 10)} (1 month before graduation).`,

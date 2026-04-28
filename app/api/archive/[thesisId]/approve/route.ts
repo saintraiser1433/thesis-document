@@ -6,7 +6,7 @@ import { createNotification } from "@/lib/notifications"
 
 // POST /api/archive/[thesisId]/approve - Program Head approves archiving
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ thesisId: string }> }
 ) {
   try {
@@ -22,6 +22,8 @@ export async function POST(
     }
 
     const { thesisId } = await params
+    const body = await request.json().catch(() => ({} as { archiveFileUrl?: string }))
+    const archiveFileUrl = body.archiveFileUrl?.trim() || null
 
     const thesis = await prisma.thesis.findUnique({
       where: { id: thesisId },
@@ -37,9 +39,17 @@ export async function POST(
       )
     }
 
+    const finalArchiveFileUrl = archiveFileUrl ?? thesis.fileUrl ?? null
+    if (!finalArchiveFileUrl) {
+      return NextResponse.json(
+        { error: "Archival PDF is required. Ask the student/teacher to upload the PDF for archival." },
+        { status: 400 }
+      )
+    }
+
     await prisma.thesis.update({
       where: { id: thesisId },
-      data: { routingStatus: "ARCHIVED" },
+      data: { routingStatus: "ARCHIVED", fileUrl: finalArchiveFileUrl },
     })
 
     await createNotification({

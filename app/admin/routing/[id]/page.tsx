@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { GradientBadge } from "@/components/ui/gradient-badge"
-import { ArrowLeft, FileText, User, RefreshCw } from "lucide-react"
+import { ArrowLeft, ClipboardList, FileText, User, RefreshCw } from "lucide-react"
 
 interface Assignment {
   id: string
@@ -52,8 +52,11 @@ export default function AdminRoutingDetailPage() {
   const id = params.id as string
   const [schedule, setSchedule] = useState<Schedule | null>(null)
   const [loading, setLoading] = useState(true)
+  const [missing, setMissing] = useState(false)
 
   const fetchSchedule = async (advance = false) => {
+    setLoading(true)
+    setMissing(false)
     try {
       if (advance) {
         await fetch(`/api/routing/${id}/advance-deadlines`, { method: "POST" })
@@ -62,10 +65,15 @@ export default function AdminRoutingDetailPage() {
       if (res.ok) {
         const data = await res.json()
         setSchedule(data)
+      } else if (res.status === 404) {
+        setSchedule(null)
+        setMissing(true)
       } else {
+        setSchedule(null)
         toast.error("Failed to load schedule")
       }
     } catch {
+      setSchedule(null)
       toast.error("Failed to load schedule")
     } finally {
       setLoading(false)
@@ -84,10 +92,41 @@ export default function AdminRoutingDetailPage() {
     return "outline"
   }
 
-  if (loading || !schedule) {
+  if (loading) {
     return (
       <DashboardLayout>
-        <div className="p-6">Loading...</div>
+        <div className="p-6 text-muted-foreground">Loading...</div>
+      </DashboardLayout>
+    )
+  }
+
+  if (missing || !schedule) {
+    return (
+      <DashboardLayout>
+        <div className="flex flex-col gap-6 p-6">
+          <Button variant="ghost" size="sm" className="w-fit" asChild>
+            <Link href="/admin/routing">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to routing schedules
+            </Link>
+          </Button>
+          <Card className="max-w-lg">
+            <CardContent className="flex flex-col items-center justify-center gap-4 py-12 text-center">
+              <div className="rounded-full bg-muted p-4">
+                <ClipboardList className="h-12 w-12 text-muted-foreground" aria-hidden />
+              </div>
+              <div className="space-y-2">
+                <p className="text-lg font-semibold">No routing schedule</p>
+                <p className="text-sm text-muted-foreground">
+                  This schedule does not exist or may have been removed. Create a new schedule from the routing list when a thesis is pending review.
+                </p>
+              </div>
+              <Button asChild>
+                <Link href="/admin/routing">Go to routing schedules</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </DashboardLayout>
     )
   }

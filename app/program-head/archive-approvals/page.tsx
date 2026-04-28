@@ -25,6 +25,7 @@ interface Thesis {
   id: string
   title: string
   routingStatus: string
+  fileUrl?: string | null
   abstract?: string
   departmentId?: string | null
   user?: { name: string; departmentId?: string | null }
@@ -40,6 +41,7 @@ export default function ProgramHeadArchiveApprovalsPage() {
   const [selectedThesis, setSelectedThesis] = useState<Thesis | null>(null)
   const [thesisToApprove, setThesisToApprove] = useState<Thesis | null>(null)
   const [rejectComment, setRejectComment] = useState("")
+  const [approving, setApproving] = useState(false)
 
   useEffect(() => {
     fetch("/api/theses")
@@ -70,6 +72,7 @@ export default function ProgramHeadArchiveApprovalsPage() {
 
   const handleApprove = async () => {
     if (!thesisToApprove) return
+    setApproving(true)
     const thesisId = thesisToApprove.id
     try {
       const res = await fetch(`/api/archive/${thesisId}/approve`, {
@@ -86,6 +89,8 @@ export default function ProgramHeadArchiveApprovalsPage() {
       setThesisToApprove(null)
     } catch {
       toast.error("Failed to approve")
+    } finally {
+      setApproving(false)
     }
   }
 
@@ -167,6 +172,16 @@ export default function ProgramHeadArchiveApprovalsPage() {
                       <GradientBadge variant="default">{t.routingStatus}</GradientBadge>
                     </div>
                     <div className="flex gap-2">
+              {t.fileUrl && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => window.open(t.fileUrl as string, "_blank")}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  View PDF
+                </Button>
+              )}
                       <Button size="sm" variant="outline" onClick={() => handleOpenReject(t)}>
                         <X className="h-4 w-4 mr-2" />
                         Reject
@@ -192,14 +207,12 @@ export default function ProgramHeadArchiveApprovalsPage() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             {thesisToApprove && (
-              <p className="text-sm font-medium">
-                Thesis: {thesisToApprove.title}
-              </p>
+              <p className="text-sm font-medium">Thesis: {thesisToApprove.title}</p>
             )}
             <AlertDialogFooter>
               <AlertDialogCancel onClick={() => setThesisToApprove(null)}>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleApprove}>
-                Approve archive
+              <AlertDialogAction onClick={handleApprove} disabled={approving}>
+                {approving ? "Approving..." : "Approve archive"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

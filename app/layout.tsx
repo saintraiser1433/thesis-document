@@ -21,8 +21,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      {/* suppressHydrationWarning: extensions (e.g. password managers) inject attrs like bis_register on <body> */}
       <body
         className={`${archivo.variable} antialiased`}
+        suppressHydrationWarning
       >
         <Providers>
           {children}

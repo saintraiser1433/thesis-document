@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
@@ -56,6 +56,10 @@ export default function ThesisRoutingDetailPage() {
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [revisionFile, setRevisionFile] = useState<File | null>(null)
+  const revisionFileInputRef = useRef<HTMLInputElement>(null)
+  const [archiveUploading, setArchiveUploading] = useState(false)
+  const [archivePdf, setArchivePdf] = useState<File | null>(null)
+  const archivePdfInputRef = useRef<HTMLInputElement>(null)
 
   const fetchSchedule = async () => {
     try {
@@ -90,12 +94,11 @@ export default function ThesisRoutingDetailPage() {
     e.preventDefault()
     if (
       !revisionFile ||
-      ![
-        "application/pdf",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      ].includes(revisionFile.type)
+      !["application/vnd.openxmlformats-officedocument.wordprocessingml.document"].includes(
+        revisionFile.type
+      )
     ) {
-      toast.error("Please select a DOCX or PDF file")
+      toast.error("Please select a DOCX file")
       return
     }
     if (revisionFile.size > 10 * 1024 * 1024) {
@@ -122,6 +125,45 @@ export default function ThesisRoutingDetailPage() {
       toast.error("Failed to upload revision")
     } finally {
       setUploading(false)
+    }
+  }
+
+  const canUploadArchivePdf =
+    schedule?.thesis?.userId === session?.user?.id &&
+    schedule?.thesis?.routingStatus === "PENDING_ARCHIVE"
+  const archivalUploadLocked = Boolean(schedule?.thesis?.fileUrl)
+
+  const handleUploadArchivePdf = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!archivePdf || archivePdf.type !== "application/pdf") {
+      toast.error("Please select a PDF file")
+      return
+    }
+    if (archivePdf.size > 10 * 1024 * 1024) {
+      toast.error("File must be under 10MB")
+      return
+    }
+
+    setArchiveUploading(true)
+    try {
+      const form = new FormData()
+      form.append("file", archivePdf)
+      const res = await fetch(`/api/archive/${schedule.thesis.id}/upload-pdf`, {
+        method: "POST",
+        body: form,
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(data.error || "Failed to upload archival PDF")
+        return
+      }
+      toast.success("Archival PDF uploaded. Awaiting program head approval.")
+      setArchivePdf(null)
+      fetchSchedule()
+    } catch {
+      toast.error("Failed to upload archival PDF")
+    } finally {
+      setArchiveUploading(false)
     }
   }
 
@@ -166,37 +208,113 @@ export default function ThesisRoutingDetailPage() {
             <CardHeader>
               <CardTitle>Submit revision for Round {nextRoundNumber}</CardTitle>
               <CardDescription>
-                Round {nextRoundNumber - 1} is complete. Upload your revised DOCX or PDF to start round {nextRoundNumber}.
+                Round {nextRoundNumber - 1} is complete. Upload your revised DOCX to start round {nextRoundNumber}.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmitRevision} className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Revised thesis (DOCX or PDF, max 10MB)</Label>
-                  <div className="flex flex-wrap items-center gap-3">
+                  <Label>Revised thesis (DOCX only, max 10MB)</Label>
+                  <div className="rounded-lg border-2 border-dashed border-muted-foreground/30 p-4 bg-muted/20">
                     <input
-                      id="revision-file"
+                      ref={revisionFileInputRef}
                       type="file"
-                      accept=".docx,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf"
+                      accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                       onChange={(e) => setRevisionFile(e.target.files?.[0] ?? null)}
-                      className="sr-only"
+                      className="hidden"
                     />
-                    <Label
-                      htmlFor="revision-file"
-                      className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      <Upload className="h-4 w-4" />
-                      Choose file
-                    </Label>
-                    {revisionFile && (
-                      <span className="text-sm text-muted-foreground">
-                        {revisionFile.name}
-                      </span>
-                    )}
+                    <div className="flex flex-col items-center gap-3 text-center">
+                      <Upload className="h-6 w-6 text-muted-foreground" />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => revisionFileInputRef.current?.click()}
+                      >
+                        Choose DOCX file
+                      </Button>
+                      <p className="text-xs text-muted-foreground">
+                        Drag-and-drop style uploader for routing revisions.
+                      </p>
+                      {revisionFile && (
+                        <span className="text-sm text-muted-foreground">{revisionFile.name}</span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <Button type="submit" disabled={uploading || !revisionFile}>
                   {uploading ? "Uploading..." : "Submit revision"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        )}
+
+        {canUploadArchivePdf && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Upload archival PDF</CardTitle>
+              <CardDescription>
+                Your thesis is pending archive approval. Upload the final PDF for archiving so the Program Head can review and approve.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/20 px-4 py-3">
+                <div className="text-sm">
+                  <span className="text-muted-foreground">Status: </span>
+                  {schedule.thesis.fileUrl ? (
+                    <span className="font-medium">Uploaded</span>
+                  ) : (
+                    <span className="font-medium">Not uploaded</span>
+                  )}
+                </div>
+                {schedule.thesis.fileUrl && (
+                  <Button type="button" variant="outline" size="sm" asChild>
+                    <a
+                      href={schedule.thesis.fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <FileText className="h-4 w-4 mr-2" />
+                      View uploaded PDF
+                    </a>
+                  </Button>
+                )}
+              </div>
+              <form onSubmit={handleUploadArchivePdf} className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Final thesis (PDF only, max 10MB)</Label>
+                  <div className="rounded-lg border-2 border-dashed border-muted-foreground/30 p-4 bg-muted/20">
+                    <input
+                      ref={archivePdfInputRef}
+                      type="file"
+                      accept=".pdf,application/pdf"
+                      onChange={(e) => setArchivePdf(e.target.files?.[0] ?? null)}
+                      className="hidden"
+                    />
+                    <div className="flex flex-col items-center gap-3 text-center">
+                      <Upload className="h-6 w-6 text-muted-foreground" />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => archivePdfInputRef.current?.click()}
+                        disabled={archivalUploadLocked}
+                      >
+                        Choose PDF file
+                      </Button>
+                      {archivePdf && (
+                        <span className="text-sm text-muted-foreground">{archivePdf.name}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {archivalUploadLocked && (
+                  <p className="text-xs text-muted-foreground">
+                    Upload is disabled because a final archival PDF is already uploaded. You can upload again only after archive rejection.
+                  </p>
+                )}
+                <Button type="submit" disabled={archivalUploadLocked || archiveUploading || !archivePdf}>
+                  {archiveUploading ? "Uploading..." : "Upload archival PDF"}
                 </Button>
               </form>
             </CardContent>

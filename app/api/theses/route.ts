@@ -3,6 +3,10 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
+function toUtcDateOnlyTimestamp(date: Date) {
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
+}
+
 // GET /api/theses - Get all theses
 export async function GET() {
   try {
@@ -139,6 +143,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ 
         error: "User ID not found in session. Please log out and log back in." 
       }, { status: 400 })
+    }
+
+    if (graduationDate) {
+      const parsedGraduationDate = new Date(graduationDate)
+      if (Number.isNaN(parsedGraduationDate.getTime())) {
+        return NextResponse.json({ error: "Invalid graduation date" }, { status: 400 })
+      }
+
+      const today = new Date()
+      if (
+        toUtcDateOnlyTimestamp(parsedGraduationDate) <
+        toUtcDateOnlyTimestamp(today)
+      ) {
+        return NextResponse.json(
+          { error: "Graduation date cannot be earlier than today" },
+          { status: 400 }
+        )
+      }
     }
 
     // Program Head and Admin theses go straight to archive; students/teachers go through routing.

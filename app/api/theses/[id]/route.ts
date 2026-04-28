@@ -3,6 +3,10 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
+function toUtcDateOnlyTimestamp(date: Date) {
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
+}
+
 // GET /api/theses/[id] - Get single thesis
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -105,6 +109,24 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     if (session.user?.role === "PROGRAM_HEAD" && existingThesis.userId !== session.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
+    }
+
+    if (graduationDate) {
+      const parsedGraduationDate = new Date(graduationDate)
+      if (Number.isNaN(parsedGraduationDate.getTime())) {
+        return NextResponse.json({ error: "Invalid graduation date" }, { status: 400 })
+      }
+
+      const today = new Date()
+      if (
+        toUtcDateOnlyTimestamp(parsedGraduationDate) <
+        toUtcDateOnlyTimestamp(today)
+      ) {
+        return NextResponse.json(
+          { error: "Graduation date cannot be earlier than today" },
+          { status: 400 }
+        )
+      }
     }
 
     // Update thesis

@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/select"
 import { DataTable } from "@/components/ui/data-table"
 import { ColumnDef } from "@tanstack/react-table"
-import { ClipboardList, Plus, Eye, FileText, X } from "lucide-react"
+import { AlertCircle, ClipboardList, Plus, Eye, FileText, X } from "lucide-react"
 
 interface Round {
   id: string
@@ -82,6 +82,7 @@ export default function AdminRoutingPage() {
   const router = useRouter()
   const [schedules, setSchedules] = useState<Schedule[]>([])
   const [loading, setLoading] = useState(true)
+  const [listLoadFailed, setListLoadFailed] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
   const [theses, setTheses] = useState<ThesisOption[]>([])
   const [departments, setDepartments] = useState<{ id: string; name: string }[]>([])
@@ -213,16 +214,20 @@ export default function AdminRoutingPage() {
   }
 
   const fetchSchedules = async () => {
+    setLoading(true)
+    setListLoadFailed(false)
     try {
       const res = await fetch("/api/routing")
       if (res.ok) {
         const data = await res.json()
         setSchedules(data)
       } else {
-        toast.error("Failed to fetch schedules")
+        setSchedules([])
+        setListLoadFailed(true)
       }
     } catch {
-      toast.error("Failed to fetch schedules")
+      setSchedules([])
+      setListLoadFailed(true)
     } finally {
       setLoading(false)
     }
@@ -478,11 +483,31 @@ export default function AdminRoutingPage() {
           <CardContent>
             {loading ? (
               <p className="text-muted-foreground py-8 text-center">Loading...</p>
+            ) : listLoadFailed ? (
+              <div className="flex flex-col items-center justify-center gap-4 py-14 px-4 text-center">
+                <div className="rounded-full bg-destructive/10 p-4">
+                  <AlertCircle className="h-12 w-12 text-destructive" aria-hidden />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-base font-medium">Could not load schedules</p>
+                  <p className="text-sm text-muted-foreground max-w-sm">
+                    Check your connection or try again. If you are not signed in as admin, sign in and reload this page.
+                  </p>
+                </div>
+                <Button type="button" variant="outline" onClick={() => fetchSchedules()}>
+                  Try again
+                </Button>
+              </div>
             ) : schedules.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <ClipboardList className="h-12 w-12 text-muted-foreground/60 mb-4" />
-                <p className="text-muted-foreground">
-                  No routing schedules yet. Create one from a thesis that is pending review.
+              <div className="flex flex-col items-center justify-center py-14 px-4 text-center">
+                <div className="rounded-full bg-muted p-5 mb-4">
+                  <ClipboardList className="h-14 w-14 text-muted-foreground/70" aria-hidden />
+                </div>
+                <p className="text-base font-medium text-foreground mb-2">
+                  No routing schedules yet
+                </p>
+                <p className="text-sm text-muted-foreground max-w-md">
+                  When students submit theses for review, you can create a routing schedule here and assign peer reviewers.
                 </p>
               </div>
             ) : (

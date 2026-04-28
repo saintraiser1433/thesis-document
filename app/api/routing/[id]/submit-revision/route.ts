@@ -15,7 +15,6 @@ function addDays(date: Date, days: number) {
 }
 
 const ALLOWED_REVISION_MIME_TYPES = new Set([
-  "application/pdf",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ])
 
@@ -42,7 +41,7 @@ export async function POST(
     }
     if (!ALLOWED_REVISION_MIME_TYPES.has(file.type)) {
       return NextResponse.json(
-        { error: "Only DOCX and PDF files are allowed" },
+        { error: "Only DOCX files are allowed for routing revisions" },
         { status: 400 }
       )
     }

@@ -41,6 +41,7 @@ interface Indexing {
 
 export default function UploadThesisPage() {
   const router = useRouter()
+  const todayDate = new Date().toISOString().split("T")[0]
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState({
     title: "",
@@ -156,6 +157,10 @@ export default function UploadThesisPage() {
 
     if (!selectedFile || !uploadedFileUrl) {
       toast.error("Please upload a PDF file")
+      return
+    }
+    if (formData.graduationDate && formData.graduationDate < todayDate) {
+      toast.error("Graduation date cannot be earlier than today")
       return
     }
 
@@ -337,6 +342,7 @@ export default function UploadThesisPage() {
                 <Input
                   id="graduationDate"
                   type="date"
+                  min={todayDate}
                   value={formData.graduationDate}
                   onChange={(e) => setFormData({ ...formData, graduationDate: e.target.value })}
                 />
