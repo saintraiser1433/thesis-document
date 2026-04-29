@@ -12,9 +12,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'No file uploaded' })
     }
 
-    // Validate file type
-    if (file.type !== 'application/pdf') {
-      return NextResponse.json({ success: false, error: 'Only PDF files are allowed' })
+    const allowedMime = new Set([
+      "application/pdf",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ])
+    const nameLower = file.name.toLowerCase()
+    const inferred =
+      nameLower.endsWith(".docx")
+        ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        : nameLower.endsWith(".pdf")
+          ? "application/pdf"
+          : null
+    const effectiveType =
+      file.type && allowedMime.has(file.type) ? file.type : inferred
+    if (!effectiveType || !allowedMime.has(effectiveType)) {
+      return NextResponse.json({
+        success: false,
+        error: "Only PDF or DOCX files are allowed",
+      })
     }
 
     // Validate file size (10MB limit)

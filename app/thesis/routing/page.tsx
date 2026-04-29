@@ -120,7 +120,7 @@ export default function ThesisRoutingPage() {
           <CardHeader>
             <CardTitle>My thesis</CardTitle>
             <CardDescription>
-              Submit a thesis for routing or view progress. You need a PDF file uploaded first.
+              Submit a thesis for routing or view progress. You need a Word document (.docx) uploaded first.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -183,7 +183,7 @@ export default function ThesisRoutingPage() {
                           )}
                         {t.routingStatus === "NONE" && !t.fileUrl && (
                           <span className="text-sm text-muted-foreground">
-                            Add a PDF file first
+                            Add a .docx file first
                           </span>
                         )}
                       </div>

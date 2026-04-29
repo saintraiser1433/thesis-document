@@ -168,6 +168,19 @@ export async function POST(request: NextRequest) {
     const autoArchive = role === "PROGRAM_HEAD" || role === "ADMIN"
     const userDepartmentId = (session.user as any)?.departmentId ?? null
 
+    if (!autoArchive) {
+      const pathPart = fileUrl.split("?")[0]?.toLowerCase() ?? ""
+      if (!pathPart.endsWith(".docx")) {
+        return NextResponse.json(
+          {
+            error:
+              "Thesis file must be a Word document (.docx) for routing. Please upload a DOCX file.",
+          },
+          { status: 400 }
+        )
+      }
+    }
+
     const thesis = await prisma.thesis.create({
       data: {
         title,

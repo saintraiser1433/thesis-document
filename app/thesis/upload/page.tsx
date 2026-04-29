@@ -150,7 +150,7 @@ export default function ThesisUploadPage() {
       return
     }
     if (!selectedFile || !uploadedFileUrl) {
-      toast.error("Please upload a PDF file")
+      toast.error("Please upload a Word document (.docx)")
       return
     }
     if (formData.graduationDate && formData.graduationDate < todayDate) {
@@ -369,68 +369,50 @@ export default function ThesisUploadPage() {
           <Card>
             <CardHeader>
               <CardTitle>File Upload</CardTitle>
-              <CardDescription>Upload the thesis PDF file (required for routing)</CardDescription>
+              <CardDescription>
+                Upload the thesis as a Word document (.docx), required for peer review routing
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <FileUpload
                 onFileSelect={handleFileSelect}
                 onUploadComplete={handleUploadComplete}
-                accept=".pdf"
+                accept=".docx"
                 maxSize={10}
               />
               {uploadedFileUrl && (
                 <div className="mt-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm text-muted-foreground truncate">
-                      Preview: {uploadedFileUrl}
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="text-sm text-muted-foreground truncate min-w-0">
+                      File: {uploadedFileUrl}
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <Button
                         type="button"
                         variant="outline"
                         onClick={() => window.open(uploadedFileUrl, "_blank")}
                       >
-                        <FileText className="h-4 w-4 mr-2" /> View in new tab
+                        <FileText className="h-4 w-4 mr-2" /> Open in new tab
                       </Button>
                       <Button
                         type="button"
                         variant="outline"
                         onClick={() => {
-                          const a = document.createElement('a')
+                          const a = document.createElement("a")
                           a.href = uploadedFileUrl
-                          a.download = uploadedFileUrl.split('/').pop() || 'thesis.pdf'
+                          a.download = uploadedFileUrl.split("/").pop() || "thesis.docx"
                           document.body.appendChild(a)
                           a.click()
                           document.body.removeChild(a)
                         }}
                       >
-                        Download PDF
+                        Download DOCX
                       </Button>
                     </div>
                   </div>
-                  <div className="h-[600px] w-full rounded-md border overflow-hidden bg-muted/30">
-                    <object
-                      data={uploadedFileUrl}
-                      type="application/pdf"
-                      className="h-full w-full"
-                    >
-                      <iframe
-                        src={uploadedFileUrl}
-                        title="PDF Preview"
-                        className="h-full w-full"
-                      />
-                      <div className="p-4 text-sm">
-                        Unable to display PDF preview. You can
-                        <button
-                          type="button"
-                          className="ml-1 underline"
-                          onClick={() => window.open(uploadedFileUrl, "_blank")}
-                        >
-                          open it in a new tab
-                        </button>
-                        .
-                      </div>
-                    </object>
+                  <div className="rounded-md border bg-muted/30 p-4 text-sm text-muted-foreground">
+                    Browsers cannot preview Word files here. After upload, use Open or Download to
+                    verify the correct file.
                   </div>
                 </div>
               )}

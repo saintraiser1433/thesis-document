@@ -21,6 +21,15 @@ function toUtcDateOnlyTimestamp(date: Date) {
   return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
 }
 
+function inferRoutingMimeFromFileUrl(fileUrl: string | null): string {
+  if (!fileUrl) return "application/pdf"
+  const lower = fileUrl.toLowerCase()
+  if (lower.endsWith(".docx")) {
+    return "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+  }
+  return "application/pdf"
+}
+
 // GET /api/routing - List schedules (admin: all, student/teacher: own theses)
 export async function GET() {
   try {
@@ -227,7 +236,7 @@ export async function POST(request: NextRequest) {
           status: RoundStatus.IN_PROGRESS,
           thesisFileUrl: thesis.fileUrl,
           routingFileUrl: thesis.fileUrl,
-          routingFileMime: "application/pdf",
+          routingFileMime: inferRoutingMimeFromFileUrl(thesis.fileUrl),
           startedAt: start,
         },
       })
