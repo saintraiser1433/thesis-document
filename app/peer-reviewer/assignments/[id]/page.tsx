@@ -9,7 +9,7 @@ import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { ArrowLeft, FileText, Upload, User, Send } from "lucide-react"
+import { ArrowLeft, Download, FileText, Upload, User, Send } from "lucide-react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +25,12 @@ const RichTextEditor = dynamic(
   () => import("@/components/rich-text-editor").then((mod) => mod.RichTextEditor),
   { ssr: false }
 )
+
+function fileNameFromUploadUrl(url: string, fallback: string) {
+  const seg = url.split("/").pop()?.split("?")[0]
+  if (!seg) return fallback
+  return seg.toLowerCase().endsWith(".docx") ? seg : `${seg}.docx`
+}
 
 interface AssignmentDetail {
   id: string
@@ -50,6 +56,9 @@ interface AssignmentDetail {
     order: number
     comment: string | null
     approved: boolean | null
+    reviewFileUrl?: string | null
+    reviewFileMime?: string | null
+    reviewedAt?: string | null
   }>
 }
 
@@ -165,24 +174,72 @@ export default function PeerReviewerAssignmentDetailPage() {
           <Card>
             <CardHeader>
               <CardTitle>Prior reviews in this round</CardTitle>
-              <CardDescription>Comments from previous reviewers</CardDescription>
+              <CardDescription>
+                Rich-text notes appear below. If a reviewer uploaded a DOCX, download or open it
+                and then open the file in{" "}
+                <strong>Microsoft Word</strong> (desktop or web)—that is where tracked changes,
+                comments, pins, and highlights are visible. The browser cannot show Word markup
+                inline.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <ul className="space-y-3">
                 {data.priorReviews.map((r, i) => (
                   <li key={i} className="border-b pb-2 last:border-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <User className="h-4 w-4 text-muted-foreground" />
                       <span className="font-medium">{r.reviewerName}</span>
                       <span className="text-sm text-muted-foreground">
+                        Reviewer {r.order}
+                      </span>
+                      <span className="text-sm text-muted-foreground">
                         {r.approved ? "Approved" : "Requested changes"}
                       </span>
+                      {r.reviewedAt && (
+                        <span className="text-xs text-muted-foreground">
+                          · {new Date(r.reviewedAt).toLocaleString()}
+                        </span>
+                      )}
                     </div>
+                    {r.reviewFileUrl && (
+                      <div className="pl-6 mt-2 flex flex-wrap items-center gap-2">
+                        <Button variant="outline" size="sm" asChild>
+                          <a
+                            href={r.reviewFileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <FileText className="h-4 w-4 mr-2" />
+                            Open DOCX
+                          </a>
+                        </Button>
+                        <Button variant="secondary" size="sm" asChild>
+                          <a
+                            href={r.reviewFileUrl}
+                            download={fileNameFromUploadUrl(
+                              r.reviewFileUrl,
+                              `reviewer-${r.order}-annotated.docx`
+                            )}
+                          >
+                            <Download className="h-4 w-4 mr-2" />
+                            Download DOCX
+                          </a>
+                        </Button>
+                        <span className="text-xs text-muted-foreground w-full sm:w-auto">
+                          Open in Word to see comments, pins, highlights, and track changes.
+                        </span>
+                      </div>
+                    )}
                     {r.comment && (
                       <div
                         className="text-sm text-muted-foreground pl-6 mt-1 prose prose-sm max-w-none"
                         dangerouslySetInnerHTML={{ __html: r.comment }}
                       />
+                    )}
+                    {!r.comment && !r.reviewFileUrl && (
+                      <p className="text-xs text-muted-foreground pl-6 mt-1">
+                        No written comment or uploaded file for this step.
+                      </p>
                     )}
                   </li>
                 ))}

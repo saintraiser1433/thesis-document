@@ -81,6 +81,9 @@ export async function GET(
         order: a.order,
         comment: a.comment,
         approved: a.approved,
+        reviewFileUrl: a.reviewFileUrl,
+        reviewFileMime: a.reviewFileMime,
+        reviewedAt: a.reviewedAt?.toISOString() ?? null,
       })),
     })
   } catch (error) {
